@@ -164,6 +164,9 @@ ignore = ["_version.py"]
 [tool.pylint.design]
 max-line-length = 180
 
+[tool.pylint.similarities]
+min-similarity-lines = 10
+
 [tool.pylint."messages control"]
 disable = [
     "missing-class-docstring",
@@ -174,3 +177,8 @@ disable = [
 [tool.pylint.reports]
 reports = true
 score = true
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
