@@ -1,0 +1,105 @@
+# SPDX-License-Identifier: MIT
+
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.py'
+      - 'pyproject.toml'
+      - '.github/workflows/build.yaml' # This workflow
+      - '.github/actions/python_setup/actions.yaml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.py'
+      - 'pyproject.toml'
+      - '.github/workflows/build.yaml' # This workflow
+      - '.github/actions/python_setup/actions.yaml'
+
+env:
+  LC_ALL: en_US.UTF-8
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  unit-test:
+    runs-on: "${{ matrix.platform }}"
+    strategy:
+      matrix:
+        python:
+          - '3.10'
+          - '3.11'
+          - '3.12'
+          - '3.13'
+        platform:
+          - 'ubuntu-latest'
+    steps:
+      - name: "Harden Runner"
+        uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
+        with:
+          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: 'Setup Python ${{ matrix.python }}'
+        uses: ./.github/actions/python_setup
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Unit tests
+        run: |
+          uvx --with tox-uv --with tox-gh -- tox
+        env:
+          REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
+
+  lint:
+    name: "${{ matrix.lint.name }}"
+    runs-on: "${{ matrix.platform }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        python:
+          - '3.13'
+        platform:
+          - 'ubuntu-latest'
+        lint:
+          - name: 'ruff'
+            commands: |
+              uvx --with tox-uv -- tox -e ruffcheck
+          - name: 'pylint'
+            commands: |
+              echo "::add-matcher::.github/workflows/matchers/pylint.json"
+              uvx --with tox-uv -- tox -e pylint
+          - name: 'mypy'
+            commands: |
+              echo "::add-matcher::.github/workflows/matchers/mypy.json"
+              uvx --with tox-uv -- tox -e mypy
+    steps:
+      - name: "Harden Runner"
+        uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
+        with:
+          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: 'Setup Python ${{ matrix.python }}'
+        uses: ./.github/actions/python_setup
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: "${{ matrix.lint.name }}"
+        run: |
+          ${{ matrix.lint.commands }}
+        env:
+          RUFF_OUTPUT_FORMAT: github
