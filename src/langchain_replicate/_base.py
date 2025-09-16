@@ -43,9 +43,18 @@ class ReplicateBase(BaseModel, abc.ABC):
 
     @property
     def _input_properties(self) -> list[tuple[str, Any]]:
-        """Sort the openapi schema Inputs in x-order"""
+        """Sort the openapi schema Input properties in x-order"""
         input_properties = sorted(
             self._version.openapi_schema["components"]["schemas"]["Input"]["properties"].items(),
             key=lambda item: item[1].get("x-order", 0),
         )
         return input_properties
+
+    @property
+    def _identifying_params(self) -> dict[str, Any]:
+        """Get the identifying parameters."""
+        return {
+            "model": self.model,
+            "model_kwargs": self.model_kwargs,
+        }
+

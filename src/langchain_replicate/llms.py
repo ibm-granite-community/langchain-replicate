@@ -90,14 +90,6 @@ class Replicate(ReplicateBase, LLM):
         return values
 
     @property
-    def _identifying_params(self) -> dict[str, Any]:
-        """Get the identifying parameters."""
-        return {
-            "model": self.model,
-            "model_kwargs": self.model_kwargs,
-        }
-
-    @property
     def _llm_type(self) -> str:
         """Return type of model."""
         return "replicate"
