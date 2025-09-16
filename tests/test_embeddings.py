@@ -21,6 +21,13 @@ class TestEmbedding:
         assert_that(output).is_instance_of(list).is_not_empty()
         assert_that(output[0]).is_instance_of(float)
 
+    def test_replicate_embed_query_with_apikey(self, replicate_api_token: str) -> None:
+        """Test specifying api key."""
+        llm = ReplicateEmbeddings(model=TEST_MODEL_WARM, texts_value_mapping=json.dumps, replicate_api_token=replicate_api_token)
+        output = llm.embed_query("What is LangChain")
+        assert_that(output).is_instance_of(list).is_not_empty()
+        assert_that(output[0]).is_instance_of(float)
+
     def test_replicate_embed_documents(self) -> None:
         """Test embedding of multiple strings."""
         llm = ReplicateEmbeddings(model=TEST_MODEL_WARM, texts_value_mapping=json.dumps)

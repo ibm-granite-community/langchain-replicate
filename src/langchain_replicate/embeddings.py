@@ -3,18 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from functools import cached_property
 from typing import Any
 
 from langchain_core.embeddings import Embeddings
-from pydantic import BaseModel, ConfigDict, Field
-from replicate import default_client
-from replicate.client import Client
+from pydantic import ConfigDict, Field
 from replicate.prediction import Prediction
-from replicate.version import Version
+
+from langchain_replicate._base import ReplicateBase
 
 
-class ReplicateEmbeddings(BaseModel, Embeddings):
+class ReplicateEmbeddings(ReplicateBase, Embeddings):
     """Replicate embedding models.
 
     To use, you should have the ``replicate`` python package installed,
@@ -34,9 +32,6 @@ class ReplicateEmbeddings(BaseModel, Embeddings):
             )
     """
 
-    model: str
-    model_kwargs: dict[str, Any] = Field(default_factory=dict)
-    replicate_api_token: str | None = None
     texts_key: str | None = None
     texts_value_mapping: Callable[[Sequence[str]], Any] | None = Field(
         default=None,
@@ -48,46 +43,16 @@ class ReplicateEmbeddings(BaseModel, Embeddings):
         formatted string, this field can be set to `json.dumps`. If the model requires newline
         separated strings, this field can be set to `"\\n".join`.
     """
-    version_obj: Version | None = Field(default=None, exclude=True)
-    """Optionally pass in the model version object during initialization to avoid
-        having to make an extra API call to retrieve it during streaming. NOTE: not
-        serializable, is excluded from serialization.
-    """
 
     model_config = ConfigDict(
         extra="forbid",
     )
 
-    @property
-    def lc_secrets(self) -> dict[str, str]:
-        return {"replicate_api_token": "REPLICATE_API_TOKEN"}
-
-    @cached_property
-    def _client(self) -> Client:
-        return Client(api_token=self.replicate_api_token) if self.replicate_api_token else default_client
-
     def _create_prediction(self, texts: list[str], **kwargs: Any) -> Prediction:
-        # get the model and version
-        if self.version_obj is None:
-            if ":" in self.model:
-                model_str, version_str = self.model.split(":")
-                model = self._client.models.get(model_str)
-                self.version_obj = model.versions.get(version_str)
-            else:
-                model = self._client.models.get(self.model)
-                self.version_obj = model.latest_version
-
         if self.texts_key is None:
-            # sort through the openapi schema to get the name of the first input
-            input_properties = sorted(
-                self.version_obj.openapi_schema["components"]["schemas"]["Input"][  # type: ignore
-                    "properties"
-                ].items(),
-                key=lambda item: item[1].get("x-order", 0),
-            )
-            self.texts_key = input_properties[0][0]
+            self.texts_key = self._input_properties[0][0]
 
-        input_: dict = {
+        input_: dict[str, Any] = {
             self.texts_key: self.texts_value_mapping(texts) if self.texts_value_mapping else texts,
             **self.model_kwargs,
             **kwargs,
@@ -98,7 +63,7 @@ class ReplicateEmbeddings(BaseModel, Embeddings):
             return self._client.models.predictions.create(self.model, input=input_)
 
         return self._client.predictions.create(
-            version=self.version_obj,  # type: ignore
+            version=self._version,
             input=input_,
         )
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable, Iterator
-from functools import cached_property
 from typing import Any
 
 from langchain_core.callbacks import CallbackManagerForLLMRun
@@ -12,16 +11,15 @@ from langchain_core.language_models.llms import LLM
 from langchain_core.outputs import GenerationChunk
 from langchain_core.utils.pydantic import get_fields
 from pydantic import ConfigDict, Field, model_validator
-from replicate import default_client
-from replicate.client import Client
 from replicate.prediction import Prediction
-from replicate.version import Version
+
+from langchain_replicate._base import ReplicateBase
 
 logger = logging.getLogger(__name__)
 
 
-class Replicate(LLM):
-    """Replicate models.
+class Replicate(ReplicateBase, LLM):
+    """Replicate completion models.
 
     To use, you should have the ``replicate`` python package installed,
     and the environment variable ``REPLICATE_API_TOKEN`` set with your API token.
@@ -37,22 +35,15 @@ class Replicate(LLM):
 
             replicate = Replicate(
                 model=(
-                    "stability-ai/stable-diffusion: "
+                    "stability-ai/stable-diffusion:"
                     "27b93a2413e7f36cd83da926f3656280b2931564ff050bf9575f1fdf9bcd7478",
                 ),
                 model_kwargs={"image_dimensions": "512x512"}
             )
     """
 
-    model: str
     model_kwargs: dict[str, Any] = Field(default_factory=dict, validation_alias="input")
-    replicate_api_token: str | None = None
     prompt_key: str | None = None
-    version_obj: Version | None = Field(default=None, exclude=True)
-    """Optionally pass in the model version object during initialization to avoid
-        having to make an extra API call to retrieve it during streaming. NOTE: not
-        serializable, is excluded from serialization.
-    """
 
     streaming: bool = False
     """Whether to stream the results."""
@@ -64,10 +55,6 @@ class Replicate(LLM):
         populate_by_name=True,
         extra="forbid",
     )
-
-    @property
-    def lc_secrets(self) -> dict[str, str]:
-        return {"replicate_api_token": "REPLICATE_API_TOKEN"}
 
     @classmethod
     def is_lc_serializable(cls) -> bool:
@@ -114,10 +101,6 @@ class Replicate(LLM):
     def _llm_type(self) -> str:
         """Return type of model."""
         return "replicate"
-
-    @cached_property
-    def _client(self) -> Client:
-        return Client(api_token=self.replicate_api_token) if self.replicate_api_token else default_client
 
     def _call(
         self,
@@ -182,26 +165,10 @@ class Replicate(LLM):
                 break
 
     def _create_prediction(self, prompt: str, **kwargs: Any) -> Prediction:
-        # get the model and version
-        if self.version_obj is None:
-            if ":" in self.model:
-                model_str, version_str = self.model.split(":")
-                model = self._client.models.get(model_str)
-                self.version_obj = model.versions.get(version_str)
-            else:
-                model = self._client.models.get(self.model)
-                self.version_obj = model.latest_version
-
         if self.prompt_key is None:
-            # sort through the openapi schema to get the name of the first input
-            input_properties = sorted(
-                self.version_obj.openapi_schema["components"]["schemas"]["Input"]["properties"].items(),  # type: ignore
-                key=lambda item: item[1].get("x-order", 0),
-            )
+            self.prompt_key = self._input_properties[0][0]
 
-            self.prompt_key = input_properties[0][0]
-
-        input_: dict = {
+        input_: dict[str, Any] = {
             self.prompt_key: prompt,
             **self.model_kwargs,
             **kwargs,
@@ -211,4 +178,4 @@ class Replicate(LLM):
         if ":" not in self.model:
             return self._client.models.predictions.create(self.model, input=input_)
 
-        return self._client.predictions.create(version=self.version_obj, input=input_)  # type: ignore
+        return self._client.predictions.create(version=self._version, input=input_)

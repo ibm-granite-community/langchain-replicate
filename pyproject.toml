@@ -9,11 +9,10 @@ name = "langchain_replicate"
 authors = [{ name = "The IBM Granite Community Team", email = "granite.cookbooks@ibm.com" }]
 description = "Improved LangChain integration for Replicate."
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Programming Language :: Python :: 3",
@@ -24,7 +23,6 @@ classifiers = [
 dependencies = [
     "replicate",
     "langchain_core",
-    "typing_extensions",
 ]
 dynamic = ["version"]
 
@@ -76,7 +74,7 @@ labels = { lint = ["ruff", "pylint", "mypy"] }
 description = "Run tests with pytest"
 package = "wheel"
 wheel_build_env = "pkg"
-passenv = [ "REPLICATE_API_TOKEN" ]
+pass_env = [ "REPLICATE_API_TOKEN" ]
 dependency_groups = [
     "pytest",
 ]
@@ -136,12 +134,12 @@ commands = [
 
 [tool.mypy]
 python_version = "3.10"
-exclude = ["^src/ibm_granite_community/_version\\.py$"]
+exclude = ["^src/langchain_replicate/_version\\.py$"]
 
 [tool.ruff]
 target-version = "py310"
 src = ["src", "tests"]
-extend-exclude = ["src/ibm_granite_community/_version.py"]
+extend-exclude = ["src/langchain_replicate/_version.py"]
 line-length = 180
 
 [tool.ruff.lint]
