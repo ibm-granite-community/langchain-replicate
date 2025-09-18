@@ -7,7 +7,8 @@ from typing import Any
 
 from langchain_core.embeddings import Embeddings
 from pydantic import ConfigDict, Field
-from replicate.prediction import Prediction
+from replicate.exceptions import ModelError
+from typing_extensions import override
 
 from langchain_replicate._base import ReplicateBase
 
@@ -48,26 +49,16 @@ class ReplicateEmbeddings(ReplicateBase, Embeddings):
         extra="forbid",
     )
 
-    def _create_prediction(self, texts: list[str], **kwargs: Any) -> Prediction:
+    def _create_prediction_input(self, texts: list[str], **kwargs: Any) -> dict[str, Any]:
         if self.texts_key is None:
-            self.texts_key = self._input_properties[0][0]
+            self.texts_key = next(iter(self._input_properties))
 
-        input_: dict[str, Any] = {
-            self.texts_key: self.texts_value_mapping(texts) if self.texts_value_mapping else texts,
-            **self.model_kwargs,
-            **kwargs,
-        }
+        input_: dict[str, Any] = {self.texts_key: self.texts_value_mapping(texts) if self.texts_value_mapping else texts} | self.model_kwargs | kwargs
 
-        # if it's an official model
-        if ":" not in self.model:
-            return self._client.models.predictions.create(self.model, input=input_)
+        return input_
 
-        return self._client.predictions.create(
-            version=self._version,
-            input=input_,
-        )
-
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+    @override
+    def embed_documents(self, texts: list[str], **kwargs: Any) -> list[list[float]]:
         """Compute doc embeddings using a Replicate embeddings model.
 
         Args:
@@ -76,15 +67,17 @@ class ReplicateEmbeddings(ReplicateBase, Embeddings):
         Returns:
             List of embeddings, one for each text.
         """
-        prediction = self._create_prediction(texts)
+        input_ = self._create_prediction_input(texts, **kwargs)
+        prediction = self._create_prediction(input_)
         prediction.wait()
         if prediction.status == "failed":
-            raise RuntimeError(prediction.error)
+            raise ModelError(prediction)
         completion = prediction.output
         assert isinstance(completion, list)
         return completion
 
-    def embed_query(self, text: str) -> list[float]:
+    @override
+    def embed_query(self, text: str, **kwargs: Any) -> list[float]:
         """Compute query embeddings using a Replicate embeddings model.
 
         Args:
@@ -93,4 +86,37 @@ class ReplicateEmbeddings(ReplicateBase, Embeddings):
         Returns:
             Embeddings for the text.
         """
-        return self.embed_documents([text])[0]
+        embeddings = self.embed_documents([text], **kwargs)
+        return embeddings[0]
+
+    @override
+    async def aembed_documents(self, texts: list[str], **kwargs: Any) -> list[list[float]]:
+        """Asynchronous Embed search docs.
+
+        Args:
+            texts: List of text to embed.
+
+        Returns:
+            List of embeddings.
+        """
+        input_ = self._create_prediction_input(texts, **kwargs)
+        prediction = await self._async_create_prediction(input_)
+        await prediction.async_wait()
+        if prediction.status == "failed":
+            raise ModelError(prediction)
+        completion = prediction.output
+        assert isinstance(completion, list)
+        return completion
+
+    @override
+    async def aembed_query(self, text: str, **kwargs: Any) -> list[float]:
+        """Asynchronous Embed query text.
+
+        Args:
+            text: Text to embed.
+
+        Returns:
+            Embedding.
+        """
+        embeddings = await self.aembed_documents([text], **kwargs)
+        return embeddings[0]
