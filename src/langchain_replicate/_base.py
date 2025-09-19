@@ -57,4 +57,3 @@ class ReplicateBase(BaseModel, abc.ABC):
             "model": self.model,
             "model_kwargs": self.model_kwargs,
         }
-
