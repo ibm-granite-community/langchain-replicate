@@ -14,38 +14,55 @@ TEST_MODEL_COLD = "ibm-granite/granite-embedding-278m-multilingual"
 
 
 class TestEmbedding:
-    def test_replicate_embed_query(self) -> None:
+    def test_embed_query(self, embed_texts: list[str]) -> None:
         """Test embedding of single string."""
         llm = ReplicateEmbeddings(model=TEST_MODEL_WARM, texts_value_mapping=json.dumps)
-        output = llm.embed_query("What is LangChain")
+        output = llm.embed_query(embed_texts[0])
         assert_that(output).is_instance_of(list).is_not_empty()
         assert_that(output[0]).is_instance_of(float)
 
-    def test_replicate_embed_query_with_apikey(self, replicate_api_token: str) -> None:
+    @pytest.mark.asyncio
+    async def test_aembed_query(self, embed_texts: list[str]) -> None:
+        """Test async embedding of single string."""
+        llm = ReplicateEmbeddings(model=TEST_MODEL_WARM, texts_value_mapping=json.dumps)
+        output = await llm.aembed_query(embed_texts[0])
+        assert_that(output).is_instance_of(list).is_not_empty()
+        assert_that(output[0]).is_instance_of(float)
+
+    def test_embed_query_with_apikey(self, embed_texts: list[str], replicate_api_token: str) -> None:
         """Test specifying api key."""
         llm = ReplicateEmbeddings(model=TEST_MODEL_WARM, texts_value_mapping=json.dumps, replicate_api_token=replicate_api_token)
-        output = llm.embed_query("What is LangChain")
+        output = llm.embed_query(embed_texts[0])
         assert_that(output).is_instance_of(list).is_not_empty()
         assert_that(output[0]).is_instance_of(float)
 
-    def test_replicate_embed_documents(self) -> None:
+    def test_embed_documents(self, embed_texts: list[str]) -> None:
         """Test embedding of multiple strings."""
         llm = ReplicateEmbeddings(model=TEST_MODEL_WARM, texts_value_mapping=json.dumps)
-        output = llm.embed_documents(["What is LangChain", "Cats are mammals"])
-        assert_that(output).is_instance_of(list).is_not_empty()
+        output = llm.embed_documents(embed_texts)
+        assert_that(output).is_instance_of(list).is_not_empty().is_length(len(embed_texts))
         assert_that(output[0]).is_instance_of(list).is_not_empty()
         assert_that(output[0][0]).is_instance_of(float)
 
-    def test_replicate_embed_model_kwargs(self) -> None:
+    @pytest.mark.asyncio
+    async def test_aembed_documents(self, embed_texts: list[str]) -> None:
+        """Test async embedding of multiple strings."""
+        llm = ReplicateEmbeddings(model=TEST_MODEL_WARM, texts_value_mapping=json.dumps)
+        output = await llm.aembed_documents(embed_texts)
+        assert_that(output).is_instance_of(list).is_not_empty().is_length(len(embed_texts))
+        assert_that(output[0]).is_instance_of(list).is_not_empty()
+        assert_that(output[0][0]).is_instance_of(float)
+
+    def test_embed_model_kwargs(self) -> None:
         """Test model_kwargs."""
         llm = ReplicateEmbeddings(model=TEST_MODEL_WARM, texts_value_mapping=json.dumps, model_kwargs={"batch_size": 16})
         assert_that(llm.model_kwargs).contains_only("batch_size").contains_entry({"batch_size": 16})
 
     @pytest.mark.slow
-    def test_replicate_embed_cold(self) -> None:
+    def test_embed_cold(self, embed_texts: list[str]) -> None:
         """Test embedding of multiple strings on cold model with default list[str] input shape."""
         llm = ReplicateEmbeddings(model=TEST_MODEL_COLD)
-        output = llm.embed_documents(["What is LangChain", "Cats are mammals"])
-        assert_that(output).is_instance_of(list).is_not_empty()
+        output = llm.embed_documents(embed_texts)
+        assert_that(output).is_instance_of(list).is_not_empty().is_length(len(embed_texts))
         assert_that(output[0]).is_instance_of(list).is_not_empty()
         assert_that(output[0][0]).is_instance_of(float)

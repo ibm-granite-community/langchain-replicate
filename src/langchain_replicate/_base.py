@@ -8,6 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 from replicate.client import Client
+from replicate.prediction import Prediction
 from replicate.version import Version
 
 
@@ -41,14 +42,14 @@ class ReplicateBase(BaseModel, abc.ABC):
         model = self._client.models.get(self.model)
         return model.latest_version  # type: ignore
 
-    @property
-    def _input_properties(self) -> list[tuple[str, Any]]:
+    @cached_property
+    def _input_properties(self) -> dict[str, Any]:
         """Sort the openapi schema Input properties in x-order"""
         input_properties = sorted(
             self._version.openapi_schema["components"]["schemas"]["Input"]["properties"].items(),
             key=lambda item: item[1].get("x-order", 0),
         )
-        return input_properties
+        return dict(input_properties)
 
     @property
     def _identifying_params(self) -> dict[str, Any]:
@@ -57,3 +58,43 @@ class ReplicateBase(BaseModel, abc.ABC):
             "model": self.model,
             "model_kwargs": self.model_kwargs,
         }
+
+    def _create_prediction(self, input_: dict[str, Any]) -> Prediction:
+        # if it's an official model
+        if ":" not in self.model:
+            return self._client.models.predictions.create(self.model, input=input_)
+
+        return self._client.predictions.create(version=self._version, input=input_)
+
+    async def _async_create_prediction(self, input_: dict[str, Any]) -> Prediction:
+        # if it's an official model
+        if ":" not in self.model:
+            return await self._client.models.predictions.async_create(self.model, input=input_)
+
+        return await self._client.predictions.async_create(version=self._version, input=input_)
+
+    def _stop_input(self, stop: list[str] | None) -> dict[str, Any]:
+        if stop is None:
+            return {}
+
+        input_properties = self._input_properties
+        if "stop" in input_properties:
+            key = "stop"
+        elif "stop_sequences" in input_properties:
+            key = "stop_sequences"
+        else:
+            return {}
+
+        value_schema: dict[str, Any] = input_properties[key]
+        value_type = value_schema["type"]
+        if value_type == "array":
+            return {key: stop}
+        if value_type == "string":
+            return {key: ",".join(stop)}
+        return {}
+
+    def _stream_input(self, stream: bool) -> dict[str, Any]:
+        if "stream" in self._input_properties:
+            return {"stream": stream}
+
+        return {}

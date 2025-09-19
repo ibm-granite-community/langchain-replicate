@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable, Iterator
+from collections.abc import AsyncIterator, Iterable, Iterator
 from typing import Any
 
-from langchain_core.callbacks import CallbackManagerForLLMRun
+from langchain_core.callbacks import AsyncCallbackManagerForLLMRun, CallbackManagerForLLMRun
 from langchain_core.language_models.llms import LLM
 from langchain_core.outputs import GenerationChunk
 from langchain_core.utils.pydantic import get_fields
 from pydantic import ConfigDict, Field, model_validator
-from replicate.prediction import Prediction
+from replicate.exceptions import ModelError
+from typing_extensions import override
 
 from langchain_replicate._base import ReplicateBase
 
@@ -94,34 +95,14 @@ class Replicate(ReplicateBase, LLM):
         """Return type of model."""
         return "replicate"
 
-    def _call(
-        self,
-        prompt: str,
-        stop: list[str] | None = None,
-        run_manager: CallbackManagerForLLMRun | None = None,
-        **kwargs: Any,
-    ) -> str:
-        """Call to replicate endpoint."""
-        completion: str | None = None
-        if self.streaming:
-            for chunk in self._stream(prompt, stop=stop, run_manager=run_manager, **kwargs):
-                if completion is None:
-                    completion = chunk.text
-                else:
-                    completion += chunk.text
-        else:
-            prediction = self._create_prediction(prompt, **kwargs)
-            prediction.wait()
-            if prediction.status == "failed":
-                raise RuntimeError(prediction.error)
-            completion = "".join(prediction.output) if isinstance(prediction.output, Iterable) else str(prediction.output)
-        assert completion is not None
-        stop_conditions = stop or self.stop
-        for s in stop_conditions:
-            if s in completion:
-                completion = completion[: completion.find(s)]
-        return completion
+    def _create_prediction_input(self, prompt: str, stream: bool, stop: list[str] | None, **kwargs: Any) -> dict[str, Any]:
+        if self.prompt_key is None:
+            self.prompt_key = next(iter(self._input_properties))
 
+        input_: dict[str, Any] = self.model_kwargs | kwargs | {self.prompt_key: prompt} | self._stop_input(stop) | self._stream_input(stream)
+        return input_
+
+    @override
     def _stream(
         self,
         prompt: str,
@@ -129,7 +110,9 @@ class Replicate(ReplicateBase, LLM):
         run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> Iterator[GenerationChunk]:
-        prediction = self._create_prediction(prompt, **kwargs)
+        input_ = self._create_prediction_input(prompt, stream=True, stop=stop, **kwargs)
+        prediction = self._create_prediction(input_)
+
         stop_conditions = stop or self.stop
         stop_condition_reached = False
         current_completion: str = ""
@@ -156,18 +139,89 @@ class Replicate(ReplicateBase, LLM):
             if stop_condition_reached:
                 break
 
-    def _create_prediction(self, prompt: str, **kwargs: Any) -> Prediction:
-        if self.prompt_key is None:
-            self.prompt_key = self._input_properties[0][0]
+    @override
+    def _call(
+        self,
+        prompt: str,
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> str:
+        completion: str
+        if self.streaming:
+            completion = "".join(chunk.text for chunk in self._stream(prompt, stop=stop, run_manager=run_manager, **kwargs))
+            return completion
 
-        input_: dict[str, Any] = {
-            self.prompt_key: prompt,
-            **self.model_kwargs,
-            **kwargs,
-        }
+        input_ = self._create_prediction_input(prompt, stream=False, stop=stop, **kwargs)
+        prediction = self._create_prediction(input_)
+        prediction.wait()
+        if prediction.status == "failed":
+            raise ModelError(prediction)
+        completion = "".join(prediction.output) if isinstance(prediction.output, Iterable) else str(prediction.output)
+        stop_conditions = stop or self.stop
+        for s in stop_conditions:
+            if s in completion:
+                completion = completion[: completion.find(s)]
+        return completion
 
-        # if it's an official model
-        if ":" not in self.model:
-            return self._client.models.predictions.create(self.model, input=input_)
+    @override
+    async def _astream(
+        self,
+        prompt: str,
+        stop: list[str] | None = None,
+        run_manager: AsyncCallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> AsyncIterator[GenerationChunk]:
+        input_ = self._create_prediction_input(prompt, stream=True, stop=stop, **kwargs)
+        prediction = await self._async_create_prediction(input_)
 
-        return self._client.predictions.create(version=self._version, input=input_)
+        stop_conditions = stop or self.stop
+        stop_condition_reached = False
+        current_completion: str = ""
+        async for output in prediction.async_output_iterator():
+            current_completion += output
+            # test for stop conditions, if specified
+            for s in stop_conditions:
+                if s in current_completion:
+                    await prediction.async_cancel()
+                    stop_condition_reached = True
+                    # Potentially some tokens that should still be yielded before ending
+                    # stream.
+                    stop_index = max(output.find(s), 0)
+                    output = output[:stop_index]
+                    if not output:
+                        break
+            if output:
+                if run_manager:
+                    await run_manager.on_llm_new_token(
+                        output,
+                        verbose=self.verbose,
+                    )
+                yield GenerationChunk(text=output)
+            if stop_condition_reached:
+                break
+
+    @override
+    async def _acall(
+        self,
+        prompt: str,
+        stop: list[str] | None = None,
+        run_manager: AsyncCallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> str:
+        completion: str
+        if self.streaming:
+            completion = "".join([chunk.text async for chunk in self._astream(prompt, stop=stop, run_manager=run_manager, **kwargs)])
+            return completion
+
+        input_ = self._create_prediction_input(prompt, stream=False, stop=stop, **kwargs)
+        prediction = await self._async_create_prediction(input_)
+        await prediction.async_wait()
+        if prediction.status == "failed":
+            raise ModelError(prediction)
+        completion = "".join(prediction.output) if isinstance(prediction.output, Iterable) else str(prediction.output)
+        stop_conditions = stop or self.stop
+        for s in stop_conditions:
+            if s in completion:
+                completion = completion[: completion.find(s)]
+        return completion
