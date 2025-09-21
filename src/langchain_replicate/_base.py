@@ -4,12 +4,21 @@ from __future__ import annotations
 
 import abc
 from functools import cached_property
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field
 from replicate.client import Client
 from replicate.prediction import Prediction
 from replicate.version import Version
+
+
+def _is_version(value: Any) -> Version | None:
+    """We use `Any` as the pydantic type of `version_obj` as replicate is still on
+    pydantic v1 and we are v2. So we use a validator
+    to ensure the value is `Version | None`."""
+    if value is None or isinstance(value, Version):
+        return value
+    raise ValueError(f"The {value} object is not of type {Version}")
 
 
 class ReplicateBase(BaseModel, abc.ABC):
@@ -18,7 +27,7 @@ class ReplicateBase(BaseModel, abc.ABC):
     model: str
     model_kwargs: dict[str, Any] = Field(default_factory=dict)
     replicate_api_token: str | None = None
-    version_obj: Version | None = Field(default=None, exclude=True)
+    version_obj: Annotated[Any | None, Field(exclude=True), AfterValidator(_is_version)] = None
     """Optionally pass in the model version object during initialization to avoid
         having to make an extra API call to retrieve it during streaming. NOTE: not
         serializable, is excluded from serialization."""
@@ -59,6 +68,10 @@ class ReplicateBase(BaseModel, abc.ABC):
             "model_kwargs": self.model_kwargs,
         }
 
+    @property
+    @abc.abstractmethod
+    def _llm_type(self) -> str: ...
+
     def _create_prediction(self, input_: dict[str, Any]) -> Prediction:
         # if it's an official model
         if ":" not in self.model:
@@ -96,5 +109,4 @@ class ReplicateBase(BaseModel, abc.ABC):
     def _stream_input(self, stream: bool) -> dict[str, Any]:
         if "stream" in self._input_properties:
             return {"stream": stream}
-
         return {}

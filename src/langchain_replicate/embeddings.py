@@ -49,6 +49,11 @@ class ReplicateEmbeddings(ReplicateBase, Embeddings):
         extra="forbid",
     )
 
+    @property
+    def _llm_type(self) -> str:
+        """Return the type of embeddings model."""
+        return "replicate-embeddings"
+
     def _create_prediction_input(self, texts: list[str], **kwargs: Any) -> dict[str, Any]:
         if self.texts_key is None:
             self.texts_key = next(iter(self._input_properties))
