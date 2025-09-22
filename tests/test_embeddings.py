@@ -6,6 +6,7 @@ import json
 
 import pytest
 from assertpy import assert_that
+from pydantic.types import SecretStr
 
 from langchain_replicate import ReplicateEmbeddings
 
@@ -29,7 +30,7 @@ class TestEmbedding:
         assert_that(output).is_instance_of(list).is_not_empty()
         assert_that(output[0]).is_instance_of(float)
 
-    def test_embed_query_with_apikey(self, embed_texts: list[str], replicate_api_token: str) -> None:
+    def test_embed_query_with_apikey(self, embed_texts: list[str], replicate_api_token: SecretStr) -> None:
         """Test specifying api key."""
         llm = ReplicateEmbeddings(model=TEST_MODEL_WARM, texts_value_mapping=json.dumps, replicate_api_token=replicate_api_token)
         output = llm.embed_query(embed_texts[0])

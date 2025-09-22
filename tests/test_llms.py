@@ -4,10 +4,9 @@
 
 import pytest
 from assertpy import assert_that
+from pydantic.types import SecretStr
 
 from langchain_replicate import Replicate
-
-from .fake_callback_handler import FakeCallbackHandler  # pylint: disable=relative-beyond-top-level
 
 TEST_MODEL_HELLO = "replicate/hello-world:5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa"
 TEST_MODEL_LANG = "meta/meta-llama-3-8b-instruct"
@@ -27,7 +26,7 @@ class TestLLM:
         output = await llm.ainvoke("What is Pi?")
         assert_that(output).is_not_none().is_not_empty().contains("Pi")
 
-    def test_with_apikey(self, replicate_api_token: str) -> None:
+    def test_with_apikey(self, replicate_api_token: SecretStr) -> None:
         """Test specifying api key."""
         llm = Replicate(model=TEST_MODEL_HELLO, replicate_api_token=replicate_api_token)
         output = llm.invoke("What is Pi?")
@@ -35,16 +34,14 @@ class TestLLM:
 
     def test_invoke_streaming(self) -> None:
         """Test invoke streaming."""
-        callback_handler = FakeCallbackHandler()
-        llm = Replicate(streaming=True, callbacks=[callback_handler], model=TEST_MODEL_HELLO)
+        llm = Replicate(streaming=True, model=TEST_MODEL_HELLO)
         output = llm.invoke("What is Pi?")
         assert_that(output).is_not_none().is_not_empty().contains("Pi")
 
     @pytest.mark.asyncio
     async def test_ainvoke_streaming(self) -> None:
         """Test invoke streaming."""
-        callback_handler = FakeCallbackHandler()
-        llm = Replicate(streaming=True, callbacks=[callback_handler], model=TEST_MODEL_HELLO)
+        llm = Replicate(streaming=True, model=TEST_MODEL_HELLO)
         output = await llm.ainvoke("What is Pi?")
         assert_that(output).is_not_none().is_not_empty().contains("Pi")
 
