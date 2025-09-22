@@ -6,13 +6,14 @@ import abc
 from functools import cached_property
 from typing import Annotated, Any
 
-from pydantic import AfterValidator, BaseModel, Field
+from pydantic import BaseModel, BeforeValidator, Field, PlainSerializer
+from pydantic.types import SecretStr
 from replicate.client import Client
 from replicate.prediction import Prediction
 from replicate.version import Version
 
 
-def _is_version(value: Any) -> Version | None:
+def _validate_version(value: Any) -> Version | None:
     """We use `Any` as the pydantic type of `version_obj` as replicate is still on
     pydantic v1 and we are v2. So we use a validator
     to ensure the value is `Version | None`."""
@@ -21,13 +22,27 @@ def _is_version(value: Any) -> Version | None:
     raise ValueError(f"The {value} object is not of type {Version}")
 
 
+def _validate_api_token(value: Any) -> SecretStr | None:
+    """Wrap input in secret string if input is a string."""
+    if value is None or isinstance(value, SecretStr):
+        return value
+    if isinstance(value, str):
+        return SecretStr(value)  # wrap str in SecretStr
+    raise ValueError(f"The {value} object is not of type {SecretStr}")
+
+
+def _get_secret(value: SecretStr | str | None) -> str | None:
+    """Unwrap secret string or return input if input is not a secret string."""
+    return value.get_secret_value() if isinstance(value, SecretStr) else value
+
+
 class ReplicateBase(BaseModel, abc.ABC):
     """Base model for Replicate integrations"""
 
     model: str
     model_kwargs: dict[str, Any] = Field(default_factory=dict)
-    replicate_api_token: str | None = None
-    version_obj: Annotated[Any | None, Field(exclude=True), AfterValidator(_is_version)] = None
+    replicate_api_token: Annotated[SecretStr | str | None, BeforeValidator(_validate_api_token), PlainSerializer(_get_secret, when_used="json-unless-none")] = None
+    version_obj: Annotated[Any | None, Field(exclude=True), BeforeValidator(_validate_version)] = None
     """Optionally pass in the model version object during initialization to avoid
         having to make an extra API call to retrieve it during streaming. NOTE: not
         serializable, is excluded from serialization."""
@@ -38,7 +53,7 @@ class ReplicateBase(BaseModel, abc.ABC):
 
     @cached_property
     def _client(self) -> Client:
-        return Client(api_token=self.replicate_api_token)
+        return Client(api_token=_get_secret(self.replicate_api_token))
 
     @cached_property
     def _version(self) -> Version:

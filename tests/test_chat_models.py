@@ -9,6 +9,7 @@ from assertpy import assert_that
 from langchain_core.messages import AIMessage, HumanMessage, ToolCall, ToolMessage
 from langchain_core.utils.function_calling import convert_to_openai_tool
 from pydantic import BaseModel
+from pydantic.types import SecretStr
 
 from langchain_replicate import ChatReplicate
 
@@ -38,7 +39,7 @@ class TestChat:
         assert_that(output).is_instance_of(AIMessage)
         assert_that(output.text()).is_not_none().is_not_empty().contains("Pi")
 
-    def test_with_apikey(self, replicate_api_token: str) -> None:
+    def test_with_apikey(self, replicate_api_token: SecretStr) -> None:
         """Test with apikey."""
         llm = ChatReplicate(model=TEST_MODEL_LANG, replicate_api_token=replicate_api_token)
         output = llm.invoke("What is Pi?")
