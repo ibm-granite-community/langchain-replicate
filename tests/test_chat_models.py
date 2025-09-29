@@ -14,6 +14,7 @@ from pydantic.types import SecretStr
 from langchain_replicate import ChatReplicate
 
 TEST_MODEL_LANG = "ibm-granite/granite-3.3-8b-instruct"
+TEST_DEPLOYMENT_LANG = "ibm-granite/deployment-granite-4-0-h-small:deployment"
 
 
 class AnswerWithJustification(BaseModel):
@@ -23,7 +24,7 @@ class AnswerWithJustification(BaseModel):
     justification: str
 
 
-class TestChat:
+class TestChat:  # pylint: disable=too-many-public-methods
     def test_invoke(self) -> None:
         """Test invoke."""
         llm = ChatReplicate(model=TEST_MODEL_LANG)
@@ -35,6 +36,21 @@ class TestChat:
     async def test_ainvoke(self) -> None:
         """Test ainvoke."""
         llm = ChatReplicate(model=TEST_MODEL_LANG)
+        output = await llm.ainvoke("What is Pi?")
+        assert_that(output).is_instance_of(AIMessage)
+        assert_that(output.text()).is_not_none().is_not_empty().contains("Pi")
+
+    def test_invoke_deployment(self) -> None:
+        """Test invoke."""
+        llm = ChatReplicate(model=TEST_DEPLOYMENT_LANG)
+        output = llm.invoke("What is Pi?")
+        assert_that(output).is_instance_of(AIMessage)
+        assert_that(output.text()).is_not_none().is_not_empty().contains("Pi")
+
+    @pytest.mark.asyncio
+    async def test_ainvoke_deployment(self) -> None:
+        """Test ainvoke."""
+        llm = ChatReplicate(model=TEST_DEPLOYMENT_LANG)
         output = await llm.ainvoke("What is Pi?")
         assert_that(output).is_instance_of(AIMessage)
         assert_that(output.text()).is_not_none().is_not_empty().contains("Pi")

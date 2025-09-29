@@ -14,6 +14,7 @@ from langchain_replicate._base import ReplicateBase
 
 TEST_MODEL_HELLO = "replicate/hello-world:5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa"
 TEST_MODEL_LANG = "meta/meta-llama-3-8b-instruct"
+TEST_DEPLOYMENT_LANG = "ibm-granite/deployment-granite-4-0-h-small:deployment"
 
 
 class ReplicateBaseTest(ReplicateBase):
@@ -44,8 +45,13 @@ class TestBase:
         assert_that(base.version_obj).is_none()
         assert_that(base._version).is_instance_of(Version)  # pylint: disable=protected-access
 
+    def test_version_deployment(self, replicate_api_token: SecretStr) -> None:
+        base = ReplicateBaseTest(model=TEST_DEPLOYMENT_LANG, replicate_api_token=replicate_api_token)
+        assert_that(base.version_obj).is_none()
+        assert_that(base._version).is_instance_of(Version)  # pylint: disable=protected-access
+
     def test_version_not_specified(self, replicate_api_token: SecretStr) -> None:
-        base = ReplicateBaseTest(model=TEST_MODEL_HELLO, replicate_api_token=replicate_api_token)
+        base = ReplicateBaseTest(model=TEST_MODEL_LANG, replicate_api_token=replicate_api_token)
         assert_that(base.version_obj).is_none()
         assert_that(base._version).is_instance_of(Version)  # pylint: disable=protected-access
 
@@ -58,7 +64,13 @@ class TestBase:
     def test_input_properties_sorted(self, replicate_api_token: SecretStr) -> None:
         llm = Replicate(model=TEST_MODEL_LANG, replicate_api_token=replicate_api_token)
         input_properties = llm._input_properties  # pylint: disable=protected-access
-        assert_that(input_properties).is_instance_of(dict)
+        assert_that(input_properties).is_instance_of(dict).is_not_empty()
+        assert_that(input_properties.items()).is_sorted(key=lambda item: item[1].get("x-order", 0))
+
+    def test_input_properties_deployment(self, replicate_api_token: SecretStr) -> None:
+        llm = Replicate(model=TEST_DEPLOYMENT_LANG, replicate_api_token=replicate_api_token)
+        input_properties = llm._input_properties  # pylint: disable=protected-access
+        assert_that(input_properties).is_instance_of(dict).is_not_empty()
         assert_that(input_properties.items()).is_sorted(key=lambda item: item[1].get("x-order", 0))
 
     def test_api_token_secret_str(self) -> None:

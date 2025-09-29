@@ -9,6 +9,8 @@ from typing import Annotated, Any
 from pydantic import BaseModel, BeforeValidator, Field, PlainSerializer
 from pydantic.types import SecretStr
 from replicate.client import Client
+from replicate.deployment import Deployment
+from replicate.identifier import ModelVersionIdentifier
 from replicate.prediction import Prediction
 from replicate.version import Version
 
@@ -51,30 +53,6 @@ class ReplicateBase(BaseModel, abc.ABC):
     def lc_secrets(self) -> dict[str, str]:
         return {"replicate_api_token": "REPLICATE_API_TOKEN"}
 
-    @cached_property
-    def _client(self) -> Client:
-        return Client(api_token=_get_secret(self.replicate_api_token))
-
-    @cached_property
-    def _version(self) -> Version:
-        if self.version_obj:
-            return self.version_obj
-        if ":" in self.model:  # not an official model
-            model_str, version_str = self.model.split(":")
-            model = self._client.models.get(model_str)
-            return model.versions.get(version_str)
-        model = self._client.models.get(self.model)
-        return model.latest_version  # type: ignore
-
-    @cached_property
-    def _input_properties(self) -> dict[str, Any]:
-        """Sort the openapi schema Input properties in x-order"""
-        input_properties = sorted(
-            self._version.openapi_schema["components"]["schemas"]["Input"]["properties"].items(),
-            key=lambda item: item[1].get("x-order", 0),
-        )
-        return dict(input_properties)
-
     @property
     def _identifying_params(self) -> dict[str, Any]:
         """Get the identifying parameters."""
@@ -87,19 +65,67 @@ class ReplicateBase(BaseModel, abc.ABC):
     @abc.abstractmethod
     def _llm_type(self) -> str: ...
 
-    def _create_prediction(self, input_: dict[str, Any]) -> Prediction:
-        # if it's an official model
-        if ":" not in self.model:
-            return self._client.models.predictions.create(self.model, input=input_)
+    @cached_property
+    def _client(self) -> Client:
+        return Client(api_token=_get_secret(self.replicate_api_token))
 
-        return self._client.predictions.create(version=self._version, input=input_)
+    @cached_property
+    def _identifier(self) -> ModelVersionIdentifier:
+        return ModelVersionIdentifier.parse(self.model)
+
+    @cached_property
+    def _deployment(self) -> Deployment | None:
+        match self._identifier:
+            case ModelVersionIdentifier(owner, name, "deployment"):
+                deployment = self._client.deployments.get(f"{owner}/{name}")
+                release: Deployment.Release = deployment.current_release  # type: ignore
+                self.model = release.model  # Set actual model name
+                return deployment
+            case _:
+                return None
+
+    @cached_property
+    def _version(self) -> Version:
+        match self._identifier:
+            case ModelVersionIdentifier(owner, name, None) if not self.version_obj:
+                model = self._client.models.get(f"{owner}/{name}")
+                return model.latest_version  # type: ignore
+            case ModelVersionIdentifier(owner, name, "deployment"):
+                release: Deployment.Release = self._deployment.current_release  # type: ignore
+                model = self._client.models.get(release.model)
+                return model.versions.get(release.version)
+            case ModelVersionIdentifier(owner, name, version) if not self.version_obj:
+                model = self._client.models.get(f"{owner}/{name}")
+                return model.versions.get(version)  # type: ignore
+            case _:
+                return self.version_obj  # type: ignore
+
+    @cached_property
+    def _input_properties(self) -> dict[str, Any]:
+        """Sort the openapi schema Input properties in x-order"""
+        input_properties = sorted(
+            self._version.openapi_schema["components"]["schemas"]["Input"]["properties"].items(),
+            key=lambda item: item[1].get("x-order", 0),
+        )
+        return dict(input_properties)
+
+    def _create_prediction(self, input_: dict[str, Any]) -> Prediction:
+        match self._identifier:
+            case ModelVersionIdentifier(_, _, None) if not self.version_obj:
+                return self._client.models.predictions.create(model=self.model, input=input_)
+            case ModelVersionIdentifier(_, _, "deployment"):
+                return self._deployment.predictions.create(input=input_)  # type: ignore
+            case _:
+                return self._client.predictions.create(version=self._version, input=input_)
 
     async def _async_create_prediction(self, input_: dict[str, Any]) -> Prediction:
-        # if it's an official model
-        if ":" not in self.model:
-            return await self._client.models.predictions.async_create(self.model, input=input_)
-
-        return await self._client.predictions.async_create(version=self._version, input=input_)
+        match self._identifier:
+            case ModelVersionIdentifier(_, _, None) if not self.version_obj:
+                return await self._client.models.predictions.async_create(model=self.model, input=input_)
+            case ModelVersionIdentifier(_, _, "deployment"):
+                return await self._deployment.predictions.async_create(input=input_)  # type: ignore
+            case _:
+                return await self._client.predictions.async_create(version=self._version, input=input_)
 
     def _stop_input(self, stop: list[str] | None) -> dict[str, Any]:
         if stop is None:
