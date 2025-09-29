@@ -10,6 +10,7 @@ from langchain_replicate import Replicate
 
 TEST_MODEL_HELLO = "replicate/hello-world:5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa"
 TEST_MODEL_LANG = "meta/meta-llama-3-8b-instruct"
+TEST_DEPLOYMENT_LANG = "ibm-granite/deployment-granite-4-0-h-small:deployment"
 
 
 class TestLLM:
@@ -23,6 +24,19 @@ class TestLLM:
     async def test_ainvoke(self) -> None:
         """Test ainvoke."""
         llm = Replicate(model=TEST_MODEL_HELLO)
+        output = await llm.ainvoke("What is Pi?")
+        assert_that(output).is_not_none().is_not_empty().contains("Pi")
+
+    def test_invoke_deployment(self) -> None:
+        """Test invoke."""
+        llm = Replicate(model=TEST_DEPLOYMENT_LANG)
+        output = llm.invoke("What is Pi?")
+        assert_that(output).is_not_none().is_not_empty().contains("Pi")
+
+    @pytest.mark.asyncio
+    async def test_ainvoke_deployment(self) -> None:
+        """Test ainvoke."""
+        llm = Replicate(model=TEST_DEPLOYMENT_LANG)
         output = await llm.ainvoke("What is Pi?")
         assert_that(output).is_not_none().is_not_empty().contains("Pi")
 
