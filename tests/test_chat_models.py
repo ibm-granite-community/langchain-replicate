@@ -30,7 +30,7 @@ class TestChat:  # pylint: disable=too-many-public-methods
         llm = ChatReplicate(model=TEST_MODEL_LANG)
         output = llm.invoke("What is Pi?")
         assert_that(output).is_instance_of(AIMessage)
-        assert_that(output.text()).is_not_none().is_not_empty().contains("Pi")
+        assert_that(output.text).is_not_none().is_not_empty().contains("Pi")
 
     @pytest.mark.asyncio
     async def test_ainvoke(self) -> None:
@@ -38,14 +38,14 @@ class TestChat:  # pylint: disable=too-many-public-methods
         llm = ChatReplicate(model=TEST_MODEL_LANG)
         output = await llm.ainvoke("What is Pi?")
         assert_that(output).is_instance_of(AIMessage)
-        assert_that(output.text()).is_not_none().is_not_empty().contains("Pi")
+        assert_that(output.text).is_not_none().is_not_empty().contains("Pi")
 
     def test_invoke_deployment(self) -> None:
         """Test invoke."""
         llm = ChatReplicate(model=TEST_DEPLOYMENT_LANG)
         output = llm.invoke("What is Pi?")
         assert_that(output).is_instance_of(AIMessage)
-        assert_that(output.text()).is_not_none().is_not_empty().contains("Pi")
+        assert_that(output.text).is_not_none().is_not_empty().contains("Pi")
 
     @pytest.mark.asyncio
     async def test_ainvoke_deployment(self) -> None:
@@ -53,21 +53,21 @@ class TestChat:  # pylint: disable=too-many-public-methods
         llm = ChatReplicate(model=TEST_DEPLOYMENT_LANG)
         output = await llm.ainvoke("What is Pi?")
         assert_that(output).is_instance_of(AIMessage)
-        assert_that(output.text()).is_not_none().is_not_empty().contains("Pi")
+        assert_that(output.text).is_not_none().is_not_empty().contains("Pi")
 
     def test_with_apikey(self, replicate_api_token: SecretStr) -> None:
         """Test with apikey."""
         llm = ChatReplicate(model=TEST_MODEL_LANG, replicate_api_token=replicate_api_token)
         output = llm.invoke("What is Pi?")
         assert_that(output).is_instance_of(AIMessage)
-        assert_that(output.text()).is_not_none().is_not_empty().contains("Pi")
+        assert_that(output.text).is_not_none().is_not_empty().contains("Pi")
 
     def test_invoke_streaming(self) -> None:
         """Test invoke streaming."""
         llm = ChatReplicate(model=TEST_MODEL_LANG, streaming=True)
         output = llm.invoke("What is Pi?")
         assert_that(output).is_instance_of(AIMessage)
-        assert_that(output.text()).is_not_none().is_not_empty().contains("Pi")
+        assert_that(output.text).is_not_none().is_not_empty().contains("Pi")
 
     @pytest.mark.asyncio
     async def test_ainvoke_streaming(self) -> None:
@@ -75,7 +75,7 @@ class TestChat:  # pylint: disable=too-many-public-methods
         llm = ChatReplicate(model=TEST_MODEL_LANG, streaming=True)
         output = await llm.ainvoke("What is Pi?")
         assert_that(output).is_instance_of(AIMessage)
-        assert_that(output.text()).is_not_none().is_not_empty().contains("Pi")
+        assert_that(output.text).is_not_none().is_not_empty().contains("Pi")
 
     def test_model_kwargs(self) -> None:
         """Test model_kwargs."""
@@ -83,7 +83,7 @@ class TestChat:  # pylint: disable=too-many-public-methods
         long_output = llm.invoke("What is Pi?")
         llm = ChatReplicate(model=TEST_MODEL_LANG, model_kwargs={"max_tokens": 5, "temperature": 0.01})
         short_output = llm.invoke("What is Pi?")
-        assert_that(len(short_output.text())).is_less_than(len(long_output.text()))
+        assert_that(len(short_output.text)).is_less_than(len(long_output.text))
         assert_that(llm.model_kwargs).contains_only("max_tokens", "temperature").contains_entry({"max_tokens": 5}, {"temperature": 0.01})
 
     def test_invoke_stop(self) -> None:
@@ -91,8 +91,8 @@ class TestChat:  # pylint: disable=too-many-public-methods
         llm = ChatReplicate(model=TEST_MODEL_LANG, model_kwargs={"temperature": 0.01})
         long_output = llm.invoke("What is Pi?")
         short_output = llm.invoke("What is Pi?", stop=["3.14"])
-        assert_that(long_output.text()).contains("3.14")
-        assert_that(short_output.text()).does_not_contain("3.14")
+        assert_that(long_output.text).contains("3.14")
+        assert_that(short_output.text).does_not_contain("3.14")
 
     def test_stream(self) -> None:
         """Test stream."""
@@ -102,7 +102,7 @@ class TestChat:  # pylint: disable=too-many-public-methods
         assert_that(combined).is_not_none()
         if combined is not None:
             combined += list(stream)
-            assert_that(combined.text()).is_not_empty().contains("Pi")
+            assert_that(combined.text).is_not_empty().contains("Pi")
 
     @pytest.mark.asyncio
     async def test_astream(self) -> None:
@@ -113,7 +113,7 @@ class TestChat:  # pylint: disable=too-many-public-methods
         assert_that(combined).is_not_none()
         if combined is not None:
             combined += [chunk async for chunk in astream]
-            assert_that(combined.text()).is_not_empty().contains("Pi")
+            assert_that(combined.text).is_not_empty().contains("Pi")
 
     def test_content_array(self) -> None:
         """Test content array."""
@@ -121,7 +121,7 @@ class TestChat:  # pylint: disable=too-many-public-methods
         messages = [HumanMessage(content=[{"type": "text", "text": "What is Pi?"}])]
         output = llm.invoke(messages)
         assert_that(output).is_instance_of(AIMessage)
-        assert_that(output.text()).is_not_none().is_not_empty().contains("Pi")
+        assert_that(output.text).is_not_none().is_not_empty().contains("Pi")
 
     def test_documents(self, documents: list[dict[str, Any]]) -> None:
         """Test documents."""
@@ -129,7 +129,7 @@ class TestChat:  # pylint: disable=too-many-public-methods
         messages = [HumanMessage(content="What did the president say about Ketanji Brown Jackson?")]
         output = llm.invoke(messages, documents=documents)
         assert_that(output).is_instance_of(AIMessage)
-        assert_that(output.text()).is_not_none().is_not_empty().contains("Supreme")
+        assert_that(output.text).is_not_none().is_not_empty().contains("Supreme")
 
     def test_chat_template_kwargs(self, documents: list[dict[str, Any]]) -> None:
         """Test chat_template_kwargs."""
@@ -138,7 +138,7 @@ class TestChat:  # pylint: disable=too-many-public-methods
         chat_template_kwargs: dict[str, Any] = {"documents": documents}
         output = llm.invoke(messages, chat_template_kwargs=chat_template_kwargs)
         assert_that(output).is_instance_of(AIMessage)
-        assert_that(output.text()).is_not_none().is_not_empty().contains("Supreme")
+        assert_that(output.text).is_not_none().is_not_empty().contains("Supreme")
 
     def test_tool_call(self, tools: list[dict[str, Any]]) -> None:
         """Test tools."""
@@ -172,7 +172,7 @@ class TestChat:  # pylint: disable=too-many-public-methods
         ]
         output = llm.invoke(messages, tools=tools)
         assert_that(output).is_instance_of(AIMessage)
-        assert_that(output.text()).is_not_none().is_not_empty().contains("Boston", "30")
+        assert_that(output.text).is_not_none().is_not_empty().contains("Boston", "30")
 
     def test_structured_response_pydantic(self) -> None:
         """Test structured response with Pydantic class."""
