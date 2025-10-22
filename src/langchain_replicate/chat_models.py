@@ -617,7 +617,7 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
         *,
         tool_choice: dict | str | Literal["auto", "none", "required", "any"] | bool | None = None,
         **kwargs: Any,
-    ) -> Runnable[LanguageModelInput, BaseMessage]:
+    ) -> Runnable[LanguageModelInput, AIMessage]:
         """Bind tool-like objects to this chat model.
 
         Args:

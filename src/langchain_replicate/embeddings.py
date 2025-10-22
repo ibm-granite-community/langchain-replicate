@@ -58,7 +58,8 @@ class ReplicateEmbeddings(ReplicateBase, Embeddings):
         if self.texts_key is None:
             self.texts_key = next(iter(self._input_properties))
 
-        input_: dict[str, Any] = {self.texts_key: self.texts_value_mapping(texts) if self.texts_value_mapping else texts} | self.model_kwargs | kwargs
+        texts_value = self.texts_value_mapping(texts) if callable(self.texts_value_mapping) else texts
+        input_: dict[str, Any] = {self.texts_key: texts_value} | self.model_kwargs | kwargs
 
         return input_
 
