@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import contextlib
 import hashlib
 import json
@@ -72,6 +73,31 @@ from langchain_replicate._base import ReplicateBase
 logger = logging.getLogger(__name__)
 
 
+def _normalize_raw_tool_call(raw_tool_call: dict[str, Any]) -> None:
+    # raw_tool_call["function"]["arguments"] may be
+    # 1. valid JSON string
+    # 2. valid JSON string surrounded by quotes (")
+    # 3. Python dict repr using single quotes (') which is not valid JSON
+    if "function" not in raw_tool_call:
+        return
+    raw_function = raw_tool_call["function"]
+    if "arguments" not in raw_function:
+        return
+    raw_arguments: str = raw_function["arguments"]
+    # Check if quoted string
+    if isinstance(raw_arguments, str) and len(raw_arguments) >= 2:
+        quote = raw_arguments[0]
+        if quote in "\"'" and raw_arguments[-1] == quote:  # Remove surrounding quotes
+            raw_arguments = raw_arguments[1:-1].encode().decode("unicode_escape")
+    # Check if valid JSON
+    try:
+        _dict = json.loads(raw_arguments)
+    except json.JSONDecodeError:
+        # Not valid JSON; assume dict repr
+        _dict = ast.literal_eval(raw_arguments)
+    raw_function["arguments"] = json.dumps(_dict)
+
+
 def _convert_dict_to_message(_dict: Mapping[str, Any], call_id: str) -> BaseMessage:
     """Convert a dictionary to a LangChain message.
 
@@ -98,6 +124,7 @@ def _convert_dict_to_message(_dict: Mapping[str, Any], call_id: str) -> BaseMess
             additional_kwargs["tool_calls"] = raw_tool_calls
             for raw_tool_call in raw_tool_calls:
                 try:
+                    _normalize_raw_tool_call(raw_tool_call)
                     tool_calls.append(parse_tool_call(raw_tool_call, return_id=True))
                 except Exception as e:  # pylint: disable=broad-exception-caught
                     invalid_tool_calls.append(make_invalid_tool_call(raw_tool_call, str(e)))
