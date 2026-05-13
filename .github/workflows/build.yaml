@@ -9,16 +9,16 @@ on:
     paths:
       - '**/*.py'
       - 'pyproject.toml'
-      - '.github/workflows/build.yaml' # This workflow
-      - '.github/actions/python_setup/actions.yaml'
+      - '.github/workflows/build.ya?ml' # This workflow
+      - '.github/actions/python_setup/*'
   pull_request:
     branches:
       - main
     paths:
       - '**/*.py'
       - 'pyproject.toml'
-      - '.github/workflows/build.yaml' # This workflow
-      - '.github/actions/python_setup/actions.yaml'
+      - '.github/workflows/build.ya?ml' # This workflow
+      - '.github/actions/python_setup/*'
 
 env:
   LC_ALL: en_US.UTF-8
@@ -44,12 +44,14 @@ jobs:
           - 'ubuntu-latest'
     steps:
       - name: "Harden Runner"
-        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
         with:
           egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
 
       - name: Checkout repository
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: 'Setup Python ${{ matrix.python }}'
         uses: ./.github/actions/python_setup
@@ -86,12 +88,14 @@ jobs:
               uvx --with tox-uv -- tox -e mypy
     steps:
       - name: "Harden Runner"
-        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
         with:
           egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
 
       - name: Checkout repository
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: 'Setup Python ${{ matrix.python }}'
         uses: ./.github/actions/python_setup
