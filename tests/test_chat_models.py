@@ -13,8 +13,8 @@ from pydantic.types import SecretStr
 
 from langchain_replicate import ChatReplicate
 
-TEST_MODEL_LANG = "ibm-granite/granite-4.0-h-small"
-TEST_DEPLOYMENT_LANG = "ibm-granite/deployment-granite-4-0-h-small:deployment"
+TEST_MODEL_LANG = "ibm-granite/granite-4.1-8b"
+TEST_DEPLOYMENT_LANG = "ibm-granite/deployment-granite-4-1-8b:deployment"
 
 
 class AnswerWithJustification(BaseModel):

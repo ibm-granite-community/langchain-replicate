@@ -8,9 +8,9 @@ from pydantic.types import SecretStr
 
 from langchain_replicate import Replicate
 
-TEST_MODEL_HELLO = "replicate/hello-world:5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa"
+TEST_MODEL_HELLO = "replicate/hello-world:9dcd6d78e7c6560c340d916fe32e9f24aabfa331e5cce95fe31f77fb03121426"
 TEST_MODEL_LANG = "meta/meta-llama-3-8b-instruct"
-TEST_DEPLOYMENT_LANG = "ibm-granite/deployment-granite-4-0-h-small:deployment"
+TEST_DEPLOYMENT_LANG = "ibm-granite/deployment-granite-4-1-8b:deployment"
 
 
 class TestLLM:
