@@ -23,7 +23,8 @@ classifiers = [
 ]
 dependencies = [
     "replicate>=1.0.7",
-    "langchain_core>=1.0.0",
+    "langchain_core>=1.2.22",
+    "json-repair>=0.30.0",
 ]
 dynamic = ["version"]
 
@@ -171,6 +172,10 @@ disable = [
     "missing-class-docstring",
     "missing-module-docstring",
     "missing-function-docstring",
+    "too-many-lines",
+    "too-many-return-statements",
+    "too-many-locals",
+    "too-many-branches",
 ]
 
 [tool.pylint.reports]

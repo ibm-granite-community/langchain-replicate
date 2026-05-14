@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import abc
-from functools import cached_property
+import json
+from functools import cached_property, partial
 from typing import Annotated, Any
 
 from pydantic import BaseModel, BeforeValidator, Field, PlainSerializer
@@ -36,6 +37,39 @@ def _validate_api_token(value: Any) -> SecretStr | None:
 def _get_secret(value: SecretStr | str | None) -> str | None:
     """Unwrap secret string or return input if input is not a secret string."""
     return value.get_secret_value() if isinstance(value, SecretStr) else value
+
+
+# This is consistent with starlette's JSONResponse used in vLLM
+_json_dumps = partial(
+    json.dumps,
+    ensure_ascii=False,
+    allow_nan=False,
+    indent=None,
+    separators=(",", ":"),
+)
+
+
+def _adjust_prediction_input(input_: dict[str, Any]) -> dict[str, Any]:
+    """Adjust any input arguments for prediction"""
+    tool_choice = input_.get("tool_choice")
+    if tool_choice:
+        if isinstance(tool_choice, str):
+            if tool_choice in ("auto", "none", "required"):
+                pass
+            elif tool_choice == "any":
+                input_["tool_choice"] = "required"
+            else:
+                input_["tool_choice"] = _json_dumps(
+                    {
+                        "type": "function",
+                        "function": {"name": tool_choice},
+                    }
+                )
+        # Handle the need to convert ChatCompletionNamedToolChoiceParam value to a string
+        elif isinstance(tool_choice, dict):
+            input_["tool_choice"] = _json_dumps(tool_choice)
+
+    return input_
 
 
 class ReplicateBase(BaseModel, abc.ABC):

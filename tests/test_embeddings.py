@@ -11,7 +11,7 @@ from pydantic.types import SecretStr
 from langchain_replicate import ReplicateEmbeddings
 
 TEST_MODEL_WARM = "beautyyuyanli/multilingual-e5-large:a06276a89f1a902d5fc225a9ca32b6e8e6292b7f3b136518878da97c458e2bad"
-TEST_MODEL_COLD = "ibm-granite/granite-embedding-278m-multilingual"
+TEST_MODEL_COLD = "ibm-granite/granite-embedding-small-english-r2"
 
 
 class TestEmbedding:
