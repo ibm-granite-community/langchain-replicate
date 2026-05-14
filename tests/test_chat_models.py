@@ -150,6 +150,19 @@ class TestChat:  # pylint: disable=too-many-public-methods
         response = cast(AIMessage, output)
         assert_that(response.tool_calls).is_not_none().is_length(1)
         assert_that(response.tool_calls[0]["name"]).is_equal_to("get_current_weather")
+        assert_that(response.tool_calls[0]["args"]["location"]).contains("Boston")
+
+    def test_tool_call_streaming(self, tools: list[dict[str, Any]]) -> None:
+        """Test tools."""
+        llm = ChatReplicate(model=TEST_MODEL_LANG, streaming=True)
+        messages = [HumanMessage(content="What is the weather like in Boston today?")]
+        llm_tools = llm.bind_tools(tools=tools)
+        output = llm_tools.invoke(messages)
+        assert_that(output).is_instance_of(AIMessage)
+        response = cast(AIMessage, output)
+        assert_that(response.tool_calls).is_not_none().is_length(1)
+        assert_that(response.tool_calls[0]["name"]).is_equal_to("get_current_weather")
+        assert_that(response.tool_calls[0]["args"]["location"]).contains("Boston")
 
     def test_tool_choice(self, tools: list[dict[str, Any]]) -> None:
         """Test tool_choice."""
@@ -161,6 +174,7 @@ class TestChat:  # pylint: disable=too-many-public-methods
         response = cast(AIMessage, output)
         assert_that(response.tool_calls).is_not_none().is_length(1)
         assert_that(response.tool_calls[0]["name"]).is_equal_to("get_current_weather")
+        assert_that(response.tool_calls[0]["args"]["location"]).contains("Boston")
 
     def test_tool_response(self, tools: list[dict[str, Any]]) -> None:
         """Test tool response."""
@@ -168,11 +182,11 @@ class TestChat:  # pylint: disable=too-many-public-methods
         messages = [
             HumanMessage(content="What is the weather like in Boston today?"),
             AIMessage(content="", tool_calls=[ToolCall(id="chatcmpl-tool-92d6ee08f1f14bab9a593271ca4174ab", name="function", args={"location": "Boston, MA", "unit": "celsius"})]),
-            ToolMessage(content="Boston is sunny with a temperature of 30°C.", tool_call_id="chatcmpl-tool-92d6ee08f1f14bab9a593271ca4174ab"),
+            ToolMessage(content='{"description": "sunny", "temperature": 10, "humidity": 50}', tool_call_id="chatcmpl-tool-92d6ee08f1f14bab9a593271ca4174ab"),
         ]
         output = llm.invoke(messages, tools=tools)
         assert_that(output).is_instance_of(AIMessage)
-        assert_that(output.text).is_not_none().is_not_empty().contains("Boston", "30")
+        assert_that(output.text).is_not_none().is_not_empty().contains("Boston", "10", "50")
 
     def test_structured_response_pydantic(self) -> None:
         """Test structured response with Pydantic class."""
@@ -192,8 +206,16 @@ class TestChat:  # pylint: disable=too-many-public-methods
         assert_that(output).is_not_none().is_instance_of(dict)
         response = cast(dict[str, Any], output)
         assert_that(response).contains_key("raw", "parsed", "parsing_error")
-        assert_that(response["raw"]).is_instance_of(AIMessage)
         assert_that(response["parsed"]).is_instance_of(AnswerWithJustification)
+        parsed = cast(AnswerWithJustification, response["parsed"])
+        assert_that(parsed.answer).is_not_none().is_not_empty()
+        assert_that(parsed.justification).is_not_none().is_not_empty()
+        assert_that(response["raw"]).is_instance_of(AIMessage)
+        raw = cast(AIMessage, response["raw"])
+        assert_that(raw.tool_calls).is_not_none().is_length(1)
+        assert_that(raw.tool_calls[0]["name"]).is_equal_to("AnswerWithJustification")
+        assert_that(raw.tool_calls[0]["args"]["answer"]).is_equal_to(parsed.answer)
+        assert_that(raw.tool_calls[0]["args"]["justification"]).is_equal_to(parsed.justification)
         assert_that(response["parsing_error"]).is_none()
 
     def test_structured_response_schema(self) -> None:

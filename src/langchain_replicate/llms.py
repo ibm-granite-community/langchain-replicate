@@ -14,7 +14,7 @@ from pydantic import ConfigDict, Field, model_validator
 from replicate.exceptions import ModelError
 from typing_extensions import override
 
-from langchain_replicate._base import ReplicateBase
+from langchain_replicate._base import ReplicateBase, _adjust_prediction_input
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,8 @@ class Replicate(ReplicateBase, LLM):
             self.prompt_key = next(iter(self._input_properties))
 
         input_: dict[str, Any] = self.model_kwargs | kwargs | {self.prompt_key: prompt} | self._stop_input(stop) | self._stream_input(stream)
-        return input_
+
+        return _adjust_prediction_input(input_)
 
     @override
     def _stream(
@@ -130,12 +131,14 @@ class Replicate(ReplicateBase, LLM):
                     if not output:
                         break
             if output:
+                chunk = GenerationChunk(text=output)
                 if run_manager:
                     run_manager.on_llm_new_token(
                         output,
+                        chunk=chunk,
                         verbose=self.verbose,
                     )
-                yield GenerationChunk(text=output)
+                yield chunk
             if stop_condition_reached:
                 break
 
@@ -192,12 +195,14 @@ class Replicate(ReplicateBase, LLM):
                     if not output:
                         break
             if output:
+                chunk = GenerationChunk(text=output)
                 if run_manager:
                     await run_manager.on_llm_new_token(
                         output,
+                        chunk=chunk,
                         verbose=self.verbose,
                     )
-                yield GenerationChunk(text=output)
+                yield chunk
             if stop_condition_reached:
                 break
 
