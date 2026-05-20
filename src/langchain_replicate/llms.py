@@ -57,10 +57,12 @@ class Replicate(ReplicateBase, LLM):
         extra="forbid",
     )
 
+    @override
     @classmethod
     def is_lc_serializable(cls) -> bool:
-        return True
+        return False
 
+    @override
     @classmethod
     def get_lc_namespace(cls) -> list[str]:
         """Get the namespace of the langchain object."""
@@ -90,6 +92,7 @@ class Replicate(ReplicateBase, LLM):
         values["model_kwargs"] = extra
         return values
 
+    @override
     @property
     def _llm_type(self) -> str:
         """Return type of model."""

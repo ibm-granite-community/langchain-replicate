@@ -61,8 +61,10 @@ class TestLLM:
 
     def test_model_kwargs(self) -> None:
         """Test model_kwargs."""
+        # pyrefly: ignore [unexpected-keyword]
         llm = Replicate(model=TEST_MODEL_LANG, model_kwargs={"max_tokens": 10, "temperature": 0.01})
         long_output = llm.invoke("What is Pi?")
+        # pyrefly: ignore [unexpected-keyword]
         llm = Replicate(model=TEST_MODEL_LANG, model_kwargs={"max_tokens": 5, "temperature": 0.01})
         short_output = llm.invoke("What is Pi?")
         assert_that(len(short_output)).is_less_than(len(long_output))

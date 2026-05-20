@@ -37,6 +37,7 @@ from langchain_core.messages import (
     SystemMessage,
     SystemMessageChunk,
     ToolCall,
+    ToolCallChunk,
     ToolMessage,
     ToolMessageChunk,
 )
@@ -354,9 +355,9 @@ def _create_usage_metadata(
     *,
     _prompt_tokens_included: bool,
 ) -> UsageMetadata:
-    input_tokens = oai_token_usage.get("prompt_tokens", 0) if not _prompt_tokens_included else 0
-    output_tokens = oai_token_usage.get("completion_tokens", 0)
-    total_tokens = oai_token_usage.get("total_tokens", input_tokens + output_tokens)
+    input_tokens: int = oai_token_usage.get("prompt_tokens", 0) if not _prompt_tokens_included else 0
+    output_tokens: int = oai_token_usage.get("completion_tokens", 0)
+    total_tokens: int = oai_token_usage.get("total_tokens", input_tokens + output_tokens)
     return UsageMetadata(
         input_tokens=input_tokens,
         output_tokens=output_tokens,
@@ -380,7 +381,7 @@ def _convert_delta_to_message_chunk(
         if "name" in function_call and function_call["name"] is None:
             function_call["name"] = ""
         additional_kwargs["function_call"] = function_call
-    tool_call_chunks = []
+    tool_call_chunks: list[ToolCallChunk] = []
     if raw_tool_calls := _dict.get("tool_calls"):
         with contextlib.suppress(KeyError):
             tool_call_chunks = [
@@ -494,6 +495,7 @@ def _convert_to_openai_response_format(schema: dict[str, Any] | type, *, strict:
         function["schema"] = function.pop("parameters")
         response_format = {"type": "json_schema", "json_schema": function}
 
+    # pyrefly: ignore [missing-attribute]
     if strict is not None and strict is not response_format["json_schema"].get("strict") and isinstance(schema, dict):
         msg = (
             f"Output schema already has 'strict' value set to "
@@ -534,10 +536,12 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
 
     model_config = ConfigDict()
 
+    @override
     @classmethod
     def is_lc_serializable(cls) -> bool:
         return False
 
+    @override
     @property
     def _llm_type(self) -> str:
         """Return the type of chat model."""
@@ -550,7 +554,7 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
         message_dicts = [_convert_message_to_dict(m) for m in messages]
         return message_dicts
 
-    def _create_chat_result(self, prediction: Prediction, generation_info: dict | None = None) -> ChatResult:
+    def _create_chat_result(self, prediction: Prediction, generation_info: dict[str, Any] | None = None) -> ChatResult:
         if prediction.status == "failed":
             raise ModelError(prediction)
 
@@ -864,7 +868,7 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
         self,
         tools: Sequence[dict[str, Any] | type | Callable[..., Any] | BaseTool],
         *,
-        tool_choice: dict | str | Literal["auto", "none", "required", "any"] | bool | None = None,
+        tool_choice: dict[str, Any] | str | Literal["auto", "none", "required", "any"] | bool | None = None,
         strict: bool | None = None,
         **kwargs: Any,
     ) -> Runnable[LanguageModelInput, AIMessage]:
