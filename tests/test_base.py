@@ -8,6 +8,7 @@ from assertpy import assert_that
 from pydantic.types import SecretStr
 from replicate.client import Client
 from replicate.version import Version
+from typing_extensions import override
 
 from langchain_replicate import Replicate
 from langchain_replicate._base import ReplicateBase
@@ -20,6 +21,7 @@ TEST_DEPLOYMENT_LANG = "ibm-granite/deployment-granite-4-1-8b:deployment"
 class ReplicateBaseTest(ReplicateBase):
     """Subclass of abstract base class for testing"""
 
+    @override
     @property
     def _llm_type(self) -> str:
         """Return the type of chat model."""

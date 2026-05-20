@@ -9,7 +9,7 @@ from pydantic.types import SecretStr
 
 
 @pytest.fixture
-def replicate_api_token(monkeypatch) -> SecretStr:
+def replicate_api_token(monkeypatch: pytest.MonkeyPatch) -> SecretStr:
     """Return the api token from the env. We also remove it from the env."""
     api_token = os.getenv("REPLICATE_API_TOKEN")
     assert_that(api_token).is_not_none().is_not_empty()

@@ -49,6 +49,7 @@ class ReplicateEmbeddings(ReplicateBase, Embeddings):
         extra="forbid",
     )
 
+    @override
     @property
     def _llm_type(self) -> str:
         """Return the type of embeddings model."""

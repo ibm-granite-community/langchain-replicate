@@ -91,10 +91,9 @@ jobs:
             commands: |
               echo "::add-matcher::.github/workflows/matchers/pylint.json"
               uvx --with tox-uv -- tox -e pylint
-          - name: 'mypy'
+          - name: 'pyrefly'
             commands: |
-              echo "::add-matcher::.github/workflows/matchers/mypy.json"
-              uvx --with tox-uv -- tox -e mypy
+              uvx --with tox-uv -- tox -e pyrefly
     steps:
       - name: "Harden Runner"
         uses: step-security/harden-runner@9ca718d3bf646d6534007c269a635b3e54cadf99 # v2.19.2
@@ -122,5 +121,3 @@ jobs:
       - name: "${{ matrix.lint.name }}"
         run: |
           ${{ matrix.lint.commands }}
-        env:
-          RUFF_OUTPUT_FORMAT: github
