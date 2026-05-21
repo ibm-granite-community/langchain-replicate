@@ -11,15 +11,14 @@ from pydantic.types import SecretStr
 @pytest.fixture
 def replicate_api_token(monkeypatch: pytest.MonkeyPatch) -> SecretStr:
     """Return the api token from the env. We also remove it from the env."""
-    api_token = os.getenv("REPLICATE_API_TOKEN")
+    api_token = os.getenv("REPLICATE_API_TOKEN", "")
     assert_that(api_token).is_not_none().is_not_empty()
     monkeypatch.delenv("REPLICATE_API_TOKEN")
-    return SecretStr(api_token)  # type: ignore
+    return SecretStr(api_token)
 
 
 @pytest.fixture
 def documents() -> list[dict[str, Any]]:
-    # pylint: disable=line-too-long
     doc_list: list[dict[str, Any]] = [
         {
             "text": """Tonight. I call on the Senate to: Pass the Freedom to Vote Act. Pass the John Lewis Voting Rights Act. And while you're at it, pass the Disclose Act so Americans can know who is funding our elections.

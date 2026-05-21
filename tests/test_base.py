@@ -37,7 +37,7 @@ class TestBase:
         assert_that(version).is_instance_of(Version)
         base = ReplicateBaseTest(model=model_str, replicate_api_token=replicate_api_token, version_obj=version)
         assert_that(base.version_obj).is_instance_of(Version).is_same_as(version)
-        assert_that(base._version).is_instance_of(Version).is_same_as(version)  # pylint: disable=protected-access
+        assert_that(base._version).is_instance_of(Version).is_same_as(version)
 
     def test_version_bad(self, replicate_api_token: SecretStr) -> None:
         assert_that(ReplicateBaseTest).raises(ValueError).when_called_with(model=TEST_MODEL_HELLO, replicate_api_token=replicate_api_token, version_obj="invalid version")
@@ -45,47 +45,49 @@ class TestBase:
     def test_version_none(self, replicate_api_token: SecretStr) -> None:
         base = ReplicateBaseTest(model=TEST_MODEL_HELLO, replicate_api_token=replicate_api_token, version_obj=None)
         assert_that(base.version_obj).is_none()
-        assert_that(base._version).is_instance_of(Version)  # pylint: disable=protected-access
+        assert_that(base._version).is_instance_of(Version)
 
     def test_version_deployment(self, replicate_api_token: SecretStr) -> None:
         base = ReplicateBaseTest(model=TEST_DEPLOYMENT_LANG, replicate_api_token=replicate_api_token)
         assert_that(base.version_obj).is_none()
-        assert_that(base._version).is_instance_of(Version)  # pylint: disable=protected-access
+        assert_that(base._version).is_instance_of(Version)
 
     def test_version_not_specified(self, replicate_api_token: SecretStr) -> None:
         base = ReplicateBaseTest(model=TEST_MODEL_LANG, replicate_api_token=replicate_api_token)
         assert_that(base.version_obj).is_none()
-        assert_that(base._version).is_instance_of(Version)  # pylint: disable=protected-access
+        assert_that(base._version).is_instance_of(Version)
 
     def test_input_properties(self, replicate_api_token: SecretStr) -> None:
         llm = Replicate(model=TEST_MODEL_HELLO, replicate_api_token=replicate_api_token)
-        input_properties = llm._input_properties  # pylint: disable=protected-access
+        input_properties = llm._input_properties
         assert_that(input_properties).is_instance_of(dict).is_length(1).contains_key("text")
         assert_that(input_properties["text"]).is_instance_of(dict).contains_entry({"type": "string"}, {"x-order": 0})
 
     def test_input_properties_sorted(self, replicate_api_token: SecretStr) -> None:
         llm = Replicate(model=TEST_MODEL_LANG, replicate_api_token=replicate_api_token)
-        input_properties = llm._input_properties  # pylint: disable=protected-access
+        input_properties = llm._input_properties
         assert_that(input_properties).is_instance_of(dict).is_not_empty()
-        assert_that(input_properties.items()).is_sorted(key=lambda item: item[1].get("x-order", 0))  # type: ignore[index]
+        assert_that(input_properties.items()).is_sorted(key=lambda item: item[1].get("x-order", 0))
 
     def test_input_properties_deployment(self, replicate_api_token: SecretStr) -> None:
         llm = Replicate(model=TEST_DEPLOYMENT_LANG, replicate_api_token=replicate_api_token)
-        input_properties = llm._input_properties  # pylint: disable=protected-access
+        input_properties = llm._input_properties
         assert_that(input_properties).is_instance_of(dict).is_not_empty()
-        assert_that(input_properties.items()).is_sorted(key=lambda item: item[1].get("x-order", 0))  # type: ignore[index]
+        assert_that(input_properties.items()).is_sorted(key=lambda item: item[1].get("x-order", 0))
 
     def test_api_token_secret_str(self) -> None:
         api_token = "secret test"
         base = ReplicateBaseTest(model=TEST_MODEL_HELLO, replicate_api_token=SecretStr(api_token))
         assert_that(base.replicate_api_token).is_instance_of(SecretStr)
-        assert_that(base.replicate_api_token.get_secret_value()).is_equal_to(api_token)  # type: ignore
+        # pyrefly: ignore [missing-attribute]
+        assert_that(base.replicate_api_token.get_secret_value()).is_equal_to(api_token)
 
     def test_api_token_str(self) -> None:
         api_token = "secret test"
         base = ReplicateBaseTest(model=TEST_MODEL_HELLO, replicate_api_token=api_token)
         assert_that(base.replicate_api_token).is_instance_of(SecretStr)
-        assert_that(base.replicate_api_token.get_secret_value()).is_equal_to(api_token)  # type: ignore
+        # pyrefly: ignore [missing-attribute]
+        assert_that(base.replicate_api_token.get_secret_value()).is_equal_to(api_token)
 
     def test_api_token_none(self) -> None:
         base = ReplicateBaseTest(model=TEST_MODEL_HELLO, replicate_api_token=None)

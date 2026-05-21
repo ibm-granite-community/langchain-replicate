@@ -121,7 +121,7 @@ def _normalize_tool_arguments(args_str: str) -> str:
             try:
                 repaired = repair_json(current)
                 parsed_object = json.loads(repaired)
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except Exception as e:
                 logger.warning("Could not parse tool arguments: %s. Error: %s", current[:100], e)
                 return "{}"
 
@@ -194,7 +194,7 @@ def _convert_dict_to_message(_dict: Mapping[str, Any], call_id: str) -> BaseMess
 
                 try:
                     tool_calls.append(parse_tool_call(raw_tool_call, return_id=True))
-                except Exception as e:  # pylint: disable=broad-exception-caught
+                except Exception as e:
                     invalid_tool_calls.append(
                         make_invalid_tool_call(raw_tool_call, str(e)),
                     )
@@ -229,7 +229,8 @@ def _convert_dict_to_message(_dict: Mapping[str, Any], call_id: str) -> BaseMess
             name=name,
             id=id_,
         )
-    return ChatMessage(content=_dict.get("content", ""), role=role, id=id_)  # type: ignore[arg-type]
+    # pyrefly: ignore [bad-argument-type]
+    return ChatMessage(content=_dict.get("content", ""), role=role, id=id_)
 
 
 def _format_message_content(content: Any) -> Any:
@@ -420,7 +421,8 @@ def _convert_delta_to_message_chunk(
         )
     if role or default_class == ChatMessageChunk:
         return ChatMessageChunk(content=content, role=role, id=id_)
-    return default_class(content=content, id=id_)  # type: ignore[call-arg]
+    # pyrefly: ignore [missing-argument]
+    return default_class(content=content, id=id_)
 
 
 def _convert_chunk_to_generation_chunk(
@@ -637,9 +639,7 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
                 continue
 
             default_chunk_class = type(generation_chunk.message)
-            if (
-                hasattr(generation_chunk.message, "usage_metadata") and generation_chunk.message.usage_metadata  # pyright: ignore[reportAttributeAccessIssue]
-            ):
+            if hasattr(generation_chunk.message, "usage_metadata") and generation_chunk.message.usage_metadata:
                 _prompt_tokens_included = True
             logprobs = (generation_chunk.generation_info or {}).get("logprobs")
             if run_manager:
@@ -649,14 +649,10 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
                     logprobs=logprobs,
                 )
             if hasattr(generation_chunk.message, "tool_calls") and isinstance(
-                generation_chunk.message.tool_calls,  # pyright: ignore[reportAttributeAccessIssue]
+                generation_chunk.message.tool_calls,
                 list,
             ):
-                first_tool_call = (
-                    generation_chunk.message.tool_calls[0]  # pyright: ignore[reportAttributeAccessIssue]
-                    if generation_chunk.message.tool_calls  # pyright: ignore[reportAttributeAccessIssue]
-                    else None
-                )
+                first_tool_call = generation_chunk.message.tool_calls[0] if generation_chunk.message.tool_calls else None
                 if isinstance(first_tool_call, dict) and first_tool_call.get("name"):
                     is_first_tool_chunk = False
 
@@ -725,9 +721,7 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
                 continue
 
             default_chunk_class = type(generation_chunk.message)
-            if (
-                hasattr(generation_chunk.message, "usage_metadata") and generation_chunk.message.usage_metadata  # pyright: ignore[reportAttributeAccessIssue]
-            ):
+            if hasattr(generation_chunk.message, "usage_metadata") and generation_chunk.message.usage_metadata:
                 _prompt_tokens_included = True
             logprobs = (generation_chunk.generation_info or {}).get("logprobs")
             if run_manager:
@@ -737,14 +731,10 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
                     logprobs=logprobs,
                 )
             if hasattr(generation_chunk.message, "tool_calls") and isinstance(
-                generation_chunk.message.tool_calls,  # pyright: ignore[reportAttributeAccessIssue]
+                generation_chunk.message.tool_calls,
                 list,
             ):
-                first_tool_call = (
-                    generation_chunk.message.tool_calls[0]  # pyright: ignore[reportAttributeAccessIssue]
-                    if generation_chunk.message.tool_calls  # pyright: ignore[reportAttributeAccessIssue]
-                    else None
-                )
+                first_tool_call = generation_chunk.message.tool_calls[0] if generation_chunk.message.tool_calls else None
                 if isinstance(first_tool_call, dict) and first_tool_call.get("name"):
                     is_first_tool_chunk = False
 
@@ -810,9 +800,7 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
             List of chunks to yield (may be empty, or contain 1-2 chunks)
         """
         # Check if this chunk has tool calls
-        has_tool_calls = (
-            hasattr(generation_chunk.message, "tool_call_chunks") and generation_chunk.message.tool_call_chunks  # pyright: ignore[reportAttributeAccessIssue]
-        )
+        has_tool_calls = hasattr(generation_chunk.message, "tool_call_chunks") and generation_chunk.message.tool_call_chunks
 
         # Check if this is a final chunk or a transition
         finish_reason = (generation_chunk.generation_info or {}).get("finish_reason")
@@ -832,7 +820,7 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
 
             # Normalize tool arguments
             if hasattr(accumulated_message, "tool_call_chunks"):
-                for tc_chunk in accumulated_message.tool_call_chunks:  # pyright: ignore[reportAttributeAccessIssue]
+                for tc_chunk in accumulated_message.tool_call_chunks:
                     if tc_chunk.get("args"):
                         with contextlib.suppress(Exception):
                             tc_chunk["args"] = _normalize_tool_arguments(tc_chunk["args"])
@@ -919,12 +907,10 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
             elif isinstance(tool_choice, dict):
                 tool_names = [formatted_tool["function"]["name"] for formatted_tool in formatted_tools]
                 if not any(tool_name == tool_choice["function"]["name"] for tool_name in tool_names):
-                    error_msg = (f"Tool choice {tool_choice} was specified, but the only provided tools were {tool_names}.",)
+                    error_msg = f"Tool choice {tool_choice} was specified, but the only provided tools were {tool_names}."
                     raise ValueError(error_msg)
             else:
-                error_msg = (  # type: ignore[unreachable]
-                    f"Unrecognized tool_choice type. Expected str, bool or dict. Received: {tool_choice}",
-                )
+                error_msg = f"Unrecognized tool_choice type. Expected str, bool or dict. Received: {tool_choice}"
                 raise ValueError(error_msg)
 
             kwargs["tool_choice"] = tool_choice
@@ -1256,15 +1242,14 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
                 "parsing_error": None,
             }
             ```
-        """  # noqa: E501 # pylint: disable=line-too-long
+        """  # noqa: E501
         if strict is not None and method == "json_mode":
             msg = "Argument `strict` is not supported with `method`='json_mode'"
             raise ValueError(msg)
         is_pydantic_schema = _is_pydantic_class(schema)
 
-        if (
-            method == "json_schema" and is_pydantic_schema and is_pydantic_v1_subclass(schema)  # type: ignore[arg-type]
-        ):
+        # pyrefly: ignore [bad-argument-type]
+        if method == "json_schema" and is_pydantic_schema and is_pydantic_v1_subclass(schema):
             # Check for Pydantic BaseModel V1
             warnings.warn(
                 "Received a Pydantic BaseModel V1 schema. This is not supported by "
@@ -1292,7 +1277,8 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
             )
             if is_pydantic_schema:
                 output_parser: Runnable[Any, Any] = PydanticToolsParser(
-                    tools=[schema],  # type: ignore
+                    # pyrefly: ignore [bad-argument-type]
+                    tools=[schema],
                     first_tool_only=True,
                 )
             else:
@@ -1308,11 +1294,8 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
                     "schema": schema,
                 },
             )
-            output_parser = (
-                PydanticOutputParser(pydantic_object=schema)  # type: ignore[arg-type]
-                if is_pydantic_schema
-                else JsonOutputParser()
-            )
+            # pyrefly: ignore [bad-argument-type]
+            output_parser = PydanticOutputParser(pydantic_object=schema) if is_pydantic_schema else JsonOutputParser()
         elif method == "json_schema":
             if schema is None:
                 error_msg = "schema must be specified when method is not 'json_mode'. Received None."
@@ -1321,15 +1304,15 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
                 response_format = {
                     "type": "json_schema",
                     "json_schema": {
-                        "name": schema.__name__,  # type: ignore[union-attr]
+                        # pyrefly: ignore [missing-attribute]
+                        "name": schema.__name__,
                         "description": schema.__doc__,
-                        "schema": schema.model_json_schema(),  # type: ignore[union-attr]
+                        # pyrefly: ignore [missing-attribute]
+                        "schema": schema.model_json_schema(),
                     },
                 }
             else:
-                response_format = _convert_to_openai_response_format(  # type: ignore[assignment]
-                    schema, strict=strict
-                )
+                response_format = _convert_to_openai_response_format(schema, strict=strict)
             bind_kwargs = {
                 "response_format": response_format,
                 "ls_structured_output_format": {
@@ -1338,11 +1321,8 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
                 },
             }
             model = self.bind(**bind_kwargs)
-            output_parser = (
-                PydanticOutputParser(pydantic_object=schema)  # type: ignore[arg-type]
-                if is_pydantic_schema
-                else JsonOutputParser()
-            )
+            # pyrefly: ignore [bad-argument-type]
+            output_parser = PydanticOutputParser(pydantic_object=schema) if is_pydantic_schema else JsonOutputParser()
         else:
             error_msg = f"Unrecognized method argument. Expected one of 'function_calling' or 'json_mode'. Received: '{method}'"
             raise ValueError(error_msg)

@@ -112,7 +112,7 @@ class ReplicateBase(BaseModel, abc.ABC):
         match self._identifier:
             case ModelVersionIdentifier(owner, name, "deployment"):
                 deployment = self._client.deployments.get(f"{owner}/{name}")
-                release: Deployment.Release = deployment.current_release  # type: ignore
+                release: Deployment.Release = deployment.current_release
                 self.model = release.model  # Set actual model name
                 return deployment
             case _:
@@ -123,16 +123,18 @@ class ReplicateBase(BaseModel, abc.ABC):
         match self._identifier:
             case ModelVersionIdentifier(owner, name, None) if not self.version_obj:
                 model = self._client.models.get(f"{owner}/{name}")
-                return model.latest_version  # type: ignore
+                return model.latest_version
             case ModelVersionIdentifier(owner, name, "deployment"):
-                release: Deployment.Release = self._deployment.current_release  # type: ignore
+                # pyrefly: ignore [missing-attribute]
+                release: Deployment.Release = self._deployment.current_release
                 model = self._client.models.get(release.model)
                 return model.versions.get(release.version)
             case ModelVersionIdentifier(owner, name, version) if not self.version_obj:
                 model = self._client.models.get(f"{owner}/{name}")
-                return model.versions.get(version)  # type: ignore
+                # pyrefly: ignore [bad-argument-type]
+                return model.versions.get(version)
             case _:
-                return self.version_obj  # type: ignore
+                return self.version_obj
 
     @cached_property
     def _input_properties(self) -> dict[str, Any]:
@@ -148,7 +150,8 @@ class ReplicateBase(BaseModel, abc.ABC):
             case ModelVersionIdentifier(_, _, None) if not self.version_obj:
                 return self._client.models.predictions.create(model=self.model, input=input_)
             case ModelVersionIdentifier(_, _, "deployment"):
-                return self._deployment.predictions.create(input=input_)  # type: ignore
+                # pyrefly: ignore [missing-attribute]
+                return self._deployment.predictions.create(input=input_)
             case _:
                 return self._client.predictions.create(version=self._version, input=input_)
 
@@ -157,7 +160,8 @@ class ReplicateBase(BaseModel, abc.ABC):
             case ModelVersionIdentifier(_, _, None) if not self.version_obj:
                 return await self._client.models.predictions.async_create(model=self.model, input=input_)
             case ModelVersionIdentifier(_, _, "deployment"):
-                return await self._deployment.predictions.async_create(input=input_)  # type: ignore
+                # pyrefly: ignore [missing-attribute]
+                return await self._deployment.predictions.async_create(input=input_)
             case _:
                 return await self._client.predictions.async_create(version=self._version, input=input_)
 

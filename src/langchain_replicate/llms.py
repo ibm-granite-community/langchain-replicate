@@ -74,7 +74,7 @@ class Replicate(ReplicateBase, LLM):
         """Build extra kwargs from additional params that were passed in."""
         all_required_field_names = get_fields(cls).keys()
 
-        input = values.pop("input", {})  # pylint: disable=redefined-builtin
+        input = values.pop("input", {})
         if input:
             logger.warning("Init param `input` is deprecated, please use `model_kwargs` instead.")
         extra = {**values.pop("model_kwargs", {}), **input}
