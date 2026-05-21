@@ -43,10 +43,6 @@ test = [
 pytest = [
     {include-group = "test"},
 ]
-pylint = [
-    "pylint",
-    {include-group = "test"},
-]
 ruff = [
     "ruff",
     {include-group = "test"},
@@ -65,12 +61,11 @@ local_scheme = "no-local-version"                   # do not include +gREV local
 # py311-unit runs the same tests with 'python3.11'
 env_list = [
     "ruff",
-    "pylint",
     "pyrefly",
     "py3-unit",
 ]
 requires = ["tox>=4.22"]
-labels = { lint = ["ruff", "pylint", "pyrefly"] }
+labels = { lint = ["ruff", "pyrefly"] }
 
 [tool.tox.env_run_base]
 description = "Run tests with pytest"
@@ -82,15 +77,6 @@ dependency_groups = [
 ]
 commands = [
     ["{envpython}", "-m", "pytest", { replace = "posargs", default = ["tests"], extend = true }],
-]
-
-[tool.tox.env.pylint]
-description = "Lint with pylint"
-dependency_groups = [
-    "pylint",
-]
-commands = [
-    ["{envpython}", "-m", "pylint", { replace = "posargs", default = ["src", "tests"], extend = true }],
 ]
 
 [tool.tox.env.ruff]
@@ -155,32 +141,6 @@ select = [
     "SIM", # flake8-simplify
     "TID", # flake8-tidy-imports
 ]
-
-[tool.pylint.main]
-py-version = "3.10"
-source-roots = ["src", "tests"]
-ignore = ["_version.py"]
-
-[tool.pylint.design]
-max-line-length = 180
-
-[tool.pylint.similarities]
-min-similarity-lines = 10
-
-[tool.pylint."messages control"]
-disable = [
-    "missing-class-docstring",
-    "missing-module-docstring",
-    "missing-function-docstring",
-    "too-many-lines",
-    "too-many-return-statements",
-    "too-many-locals",
-    "too-many-branches",
-]
-
-[tool.pylint.reports]
-reports = true
-score = true
 
 [tool.pytest.ini_options]
 markers = [

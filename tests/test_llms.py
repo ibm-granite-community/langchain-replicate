@@ -72,7 +72,7 @@ class TestLLM:
 
     def test_alias_input(self) -> None:
         """Test input model_kwarg alias parameter."""
-        llm = Replicate(model=TEST_MODEL_LANG, input={"max_tokens": 10})  # type: ignore
+        llm = Replicate(model=TEST_MODEL_LANG, input={"max_tokens": 10})
         assert_that(llm.model_kwargs).contains_only("max_tokens").contains_entry({"max_tokens": 10})
 
     def test_stream(self) -> None:

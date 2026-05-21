@@ -34,6 +34,7 @@ jobs:
   unit-test:
     runs-on: "${{ matrix.platform }}"
     strategy:
+      fail-fast: false
       matrix:
         python:
           - '3.10'
@@ -87,10 +88,6 @@ jobs:
           - name: 'ruff'
             commands: |
               uvx --with tox-uv -- tox -e ruffcheck
-          - name: 'pylint'
-            commands: |
-              echo "::add-matcher::.github/workflows/matchers/pylint.json"
-              uvx --with tox-uv -- tox -e pylint
           - name: 'pyrefly'
             commands: |
               uvx --with tox-uv -- tox -e pyrefly

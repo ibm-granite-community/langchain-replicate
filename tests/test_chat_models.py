@@ -24,7 +24,7 @@ class AnswerWithJustification(BaseModel):
     justification: str
 
 
-class TestChat:  # pylint: disable=too-many-public-methods
+class TestChat:
     def test_invoke(self) -> None:
         """Test invoke."""
         llm = ChatReplicate(model=TEST_MODEL_LANG)
