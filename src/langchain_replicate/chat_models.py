@@ -603,6 +603,25 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
 
         return _adjust_prediction_input(input_)
 
+    def _parse_stream_output(self, output: Any) -> dict[str, Any]:
+        """Parse streaming output into a dictionary chunk.
+
+        Args:
+            output: Raw output from prediction iterator (str or dict)
+
+        Returns:
+            Parsed chunk as dictionary
+
+        Raises:
+            ValueError: If output format is unrecognized
+        """
+        if isinstance(output, str):
+            return json.loads(output)
+        if isinstance(output, dict):
+            return output
+        logger.error("Unrecognized output shape %s %r", type(output), output)
+        raise ValueError(f"Unrecognized output shape {type(output)} {output!r}")
+
     @override
     def _stream(
         self,
@@ -623,14 +642,7 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
         accumulated_chunks: list[ChatGenerationChunk] = []
 
         for output in prediction.output_iterator():
-            chunk: dict[str, Any]
-            if isinstance(output, str):
-                chunk = json.loads(output)
-            elif isinstance(output, dict):
-                chunk = output
-            else:
-                logger.error("Unrecognized output shape %s %r", type(output), output)
-                raise ValueError(f"Unrecognized output shape {type(output)} {output!r}")
+            chunk = self._parse_stream_output(output)
 
             generation_chunk = _convert_chunk_to_generation_chunk(
                 chunk, default_chunk_class, is_first_tool_chunk=is_first_tool_chunk, _prompt_tokens_included=_prompt_tokens_included
@@ -639,8 +651,11 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
                 continue
 
             default_chunk_class = type(generation_chunk.message)
-            if hasattr(generation_chunk.message, "usage_metadata") and generation_chunk.message.usage_metadata:
+
+            usage_metadata = getattr(generation_chunk.message, "usage_metadata", None)
+            if usage_metadata:
                 _prompt_tokens_included = True
+
             logprobs = (generation_chunk.generation_info or {}).get("logprobs")
             if run_manager:
                 run_manager.on_llm_new_token(
@@ -648,11 +663,10 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
                     chunk=generation_chunk,
                     logprobs=logprobs,
                 )
-            if hasattr(generation_chunk.message, "tool_calls") and isinstance(
-                generation_chunk.message.tool_calls,
-                list,
-            ):
-                first_tool_call = generation_chunk.message.tool_calls[0] if generation_chunk.message.tool_calls else None
+
+            tool_calls = getattr(generation_chunk.message, "tool_calls", None)
+            if isinstance(tool_calls, list) and tool_calls:
+                first_tool_call = tool_calls[0]
                 if isinstance(first_tool_call, dict) and first_tool_call.get("name"):
                     is_first_tool_chunk = False
 
@@ -702,14 +716,7 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
         accumulated_chunks: list[ChatGenerationChunk] = []
 
         async for output in prediction.async_output_iterator():
-            chunk: dict[str, Any]
-            if isinstance(output, str):
-                chunk = json.loads(output)
-            elif isinstance(output, dict):
-                chunk = output
-            else:
-                logger.error("Unrecognized output shape %s %r", type(output), output)
-                raise ValueError(f"Unrecognized output shape {type(output)} {output!r}")
+            chunk = self._parse_stream_output(output)
 
             generation_chunk = _convert_chunk_to_generation_chunk(
                 chunk,
@@ -721,8 +728,11 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
                 continue
 
             default_chunk_class = type(generation_chunk.message)
-            if hasattr(generation_chunk.message, "usage_metadata") and generation_chunk.message.usage_metadata:
+
+            usage_metadata = getattr(generation_chunk.message, "usage_metadata", None)
+            if usage_metadata:
                 _prompt_tokens_included = True
+
             logprobs = (generation_chunk.generation_info or {}).get("logprobs")
             if run_manager:
                 await run_manager.on_llm_new_token(
@@ -730,11 +740,10 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
                     chunk=generation_chunk,
                     logprobs=logprobs,
                 )
-            if hasattr(generation_chunk.message, "tool_calls") and isinstance(
-                generation_chunk.message.tool_calls,
-                list,
-            ):
-                first_tool_call = generation_chunk.message.tool_calls[0] if generation_chunk.message.tool_calls else None
+
+            tool_calls = getattr(generation_chunk.message, "tool_calls", None)
+            if isinstance(tool_calls, list) and tool_calls:
+                first_tool_call = tool_calls[0]
                 if isinstance(first_tool_call, dict) and first_tool_call.get("name"):
                     is_first_tool_chunk = False
 
