@@ -129,8 +129,13 @@ class Replicate(ReplicateBase, LLM):
                     stop_condition_reached = True
                     # Potentially some tokens that should still be yielded before ending
                     # stream.
-                    stop_index = max(output.find(s), 0)
-                    output = output[:stop_index]
+                    # Find stop sequence position in accumulated text
+                    stop_index = current_completion.find(s)
+                    if stop_index >= 0:
+                        # Calculate how much of current output chunk to include
+                        chars_already_yielded = len(current_completion) - len(output)
+                        chars_to_yield = stop_index - chars_already_yielded
+                        output = output[:chars_to_yield] if chars_to_yield >= 0 else ""
                     if not output:
                         break
             if output:
@@ -165,9 +170,9 @@ class Replicate(ReplicateBase, LLM):
             raise ModelError(prediction)
         completion = "".join(prediction.output) if isinstance(prediction.output, Iterable) else str(prediction.output)
         stop_conditions = stop or self.stop
-        for s in stop_conditions:
-            if s in completion:
-                completion = completion[: completion.find(s)]
+        stop_positions = [completion.find(s) for s in stop_conditions if s in completion]
+        if stop_positions:
+            completion = completion[: min(stop_positions)]
         return completion
 
     @override
@@ -193,8 +198,13 @@ class Replicate(ReplicateBase, LLM):
                     stop_condition_reached = True
                     # Potentially some tokens that should still be yielded before ending
                     # stream.
-                    stop_index = max(output.find(s), 0)
-                    output = output[:stop_index]
+                    # Find stop sequence position in accumulated text
+                    stop_index = current_completion.find(s)
+                    if stop_index >= 0:
+                        # Calculate how much of current output chunk to include
+                        chars_already_yielded = len(current_completion) - len(output)
+                        chars_to_yield = stop_index - chars_already_yielded
+                        output = output[:chars_to_yield] if chars_to_yield >= 0 else ""
                     if not output:
                         break
             if output:
@@ -229,7 +239,7 @@ class Replicate(ReplicateBase, LLM):
             raise ModelError(prediction)
         completion = "".join(prediction.output) if isinstance(prediction.output, Iterable) else str(prediction.output)
         stop_conditions = stop or self.stop
-        for s in stop_conditions:
-            if s in completion:
-                completion = completion[: completion.find(s)]
+        stop_positions = [completion.find(s) for s in stop_conditions if s in completion]
+        if stop_positions:
+            completion = completion[: min(stop_positions)]
         return completion
