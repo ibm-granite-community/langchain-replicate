@@ -924,7 +924,7 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
         else:
             kwargs["tool_choice"] = "auto"
 
-        return super().bind(tools=formatted_tools, **kwargs)
+        return self.bind(tools=formatted_tools, **kwargs)
 
     @override
     def with_structured_output(
