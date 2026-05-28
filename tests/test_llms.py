@@ -95,3 +95,51 @@ class TestLLM:
         if combined is not None:
             combined += "".join([chunk async for chunk in astream])
             assert_that(combined).is_not_empty().contains("Pi")
+
+    def test_invoke_multiple_stop_sequences(self) -> None:
+        """Test invoke with multiple stop sequences uses earliest occurrence."""
+        llm = Replicate(model=TEST_MODEL_LANG)
+        # Request a longer response and use multiple stop sequences in random order
+        # The model should stop at whichever sequence appears first in the output
+        output = llm.invoke("Count from 1 to 10", stop=["9", "5", "8"])
+        assert_that(output).is_not_none().is_not_empty()
+        # Output should be truncated at the earliest stop sequence
+        # It should not contain any of the stop sequences
+        assert_that(output).contains("1", "2", "3", "4").does_not_contain("5", "6", "7", "8", "9")
+
+    @pytest.mark.asyncio
+    async def test_ainvoke_multiple_stop_sequences(self) -> None:
+        """Test ainvoke with multiple stop sequences uses earliest occurrence."""
+        llm = Replicate(model=TEST_MODEL_LANG)
+        # Request a longer response and use multiple stop sequences in different order
+        output = await llm.ainvoke("Count from 1 to 10", stop=["8", "9", "5"])
+        assert_that(output).is_not_none().is_not_empty()
+        # Output should be truncated at the earliest stop sequence
+        assert_that(output).contains("1", "2", "3", "4").does_not_contain("5", "6", "7", "8", "9")
+
+    def test_stream_multiple_stop_sequences(self) -> None:
+        """Test stream with multiple stop sequences uses earliest occurrence."""
+        llm = Replicate(model=TEST_MODEL_LANG)
+        # Use yet another ordering to verify order independence
+        stream = llm.stream("Count from 1 to 10", stop=["5", "9", "8", "elephant"])
+        combined = next(stream, None)
+        assert_that(combined).is_not_none()
+        if combined is not None:
+            combined += "".join(stream)
+            assert_that(combined).is_not_empty()
+            # Output should be truncated at the earliest stop sequence
+            assert_that(combined).contains("1", "2", "3", "4").does_not_contain("5", "6", "7", "8", "9")
+
+    @pytest.mark.asyncio
+    async def test_astream_multiple_stop_sequences(self) -> None:
+        """Test astream with multiple stop sequences uses earliest occurrence."""
+        llm = Replicate(model=TEST_MODEL_LANG)
+        # Use a fourth ordering to thoroughly test order independence
+        astream = llm.astream("Count from 1 to 10", stop=["8", "5", "9"])
+        combined = await anext(astream, None)
+        assert_that(combined).is_not_none()
+        if combined is not None:
+            combined += "".join([chunk async for chunk in astream])
+            assert_that(combined).is_not_empty()
+            # Output should be truncated at the earliest stop sequence
+            assert_that(combined).contains("1", "2", "3", "4").does_not_contain("5", "6", "7", "8", "9")
