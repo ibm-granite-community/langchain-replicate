@@ -565,14 +565,8 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
             output = prediction.output[0]
         else:
             output = prediction.output
-        response: Mapping[str, Any]
-        if isinstance(output, str):
-            response = json.loads(output)
-        elif isinstance(output, Mapping):
-            response = output
-        else:
-            logger.error("Unrecognized output shape %s %r", type(output), output)
-            raise ValueError(f"Unrecognized output shape {type(output)} {output!r}")
+
+        response = self._parse_output(output)
 
         token_usage = response.get("usage", {})
 
@@ -607,8 +601,8 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
 
         return _adjust_prediction_input(input_)
 
-    def _parse_stream_output(self, output: Any) -> dict[str, Any]:
-        """Parse streaming output into a dictionary chunk.
+    def _parse_output(self, output: Any) -> dict[str, Any]:
+        """Parse output into a dictionary chunk.
 
         Args:
             output: Raw output from prediction iterator (str or dict)
@@ -646,7 +640,7 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
         accumulated_chunks: list[ChatGenerationChunk] = []
 
         for output in prediction.output_iterator():
-            chunk = self._parse_stream_output(output)
+            chunk = self._parse_output(output)
 
             generation_chunk = _convert_chunk_to_generation_chunk(
                 chunk, default_chunk_class, is_first_tool_chunk=is_first_tool_chunk, _prompt_tokens_included=_prompt_tokens_included
@@ -720,7 +714,7 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
         accumulated_chunks: list[ChatGenerationChunk] = []
 
         async for output in prediction.async_output_iterator():
-            chunk = self._parse_stream_output(output)
+            chunk = self._parse_output(output)
 
             generation_chunk = _convert_chunk_to_generation_chunk(
                 chunk,
