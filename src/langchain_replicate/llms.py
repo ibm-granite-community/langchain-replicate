@@ -110,6 +110,37 @@ class Replicate(ReplicateBase, LLM):
 
         return _adjust_prediction_input(input_)
 
+    def _apply_stop_sequences(self, text: str, stop_sequences: list[str] | None) -> str:
+        """Apply stop sequences to text, truncating at the first occurrence.
+
+        Args:
+            text: The text to apply stop sequences to
+            stop_sequences: List of stop sequences to check for
+
+        Returns:
+            The text truncated at the first stop sequence, or the original text if none found
+        """
+        if stop_sequences:
+            stop_positions = [text.find(s) for s in stop_sequences if s and s in text]
+            if stop_positions:
+                return text[: min(stop_positions)]
+        return text
+
+    def _emit_chunk(
+        self,
+        text: str,
+        run_manager: CallbackManagerForLLMRun | None,
+    ) -> GenerationChunk:
+        """Create and emit a generation chunk with callback notification."""
+        chunk = GenerationChunk(text=text)
+        if run_manager:
+            run_manager.on_llm_new_token(
+                text,
+                chunk=chunk,
+                verbose=self.verbose,
+            )
+        return chunk
+
     @override
     def _stream(
         self,
@@ -118,41 +149,42 @@ class Replicate(ReplicateBase, LLM):
         run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> Iterator[GenerationChunk]:
-        input_ = self._create_prediction_input(prompt, stream=True, stop=stop, **kwargs)
+        stop_sequences = stop or self.stop
+        input_ = self._create_prediction_input(prompt, stream=True, stop=stop_sequences, **kwargs)
         prediction = self._create_prediction(input_)
 
-        stop_conditions = stop or self.stop
-        stop_condition_reached = False
-        current_completion: str = ""
-        for output in prediction.output_iterator():
-            current_completion += output
-            # test for stop conditions, if specified
-            for s in stop_conditions:
-                if s in current_completion:
+        # If stop sequences are present and not handled by prediction, stream incrementally
+        if stop_sequences and not self._stop_input(stop_sequences):
+            max_stop_length = max((len(sequence) for sequence in stop_sequences), default=0)
+            buffered_output = ""
+
+            for output in prediction.output_iterator():
+                if not output:
+                    continue
+
+                buffered_output += output
+                truncated_output = self._apply_stop_sequences(buffered_output, stop_sequences)
+
+                if len(truncated_output) < len(buffered_output):
+                    buffered_output = truncated_output
                     prediction.cancel()
-                    stop_condition_reached = True
-                    # Potentially some tokens that should still be yielded before ending
-                    # stream.
-                    # Find stop sequence position in accumulated text
-                    stop_index = current_completion.find(s)
-                    if stop_index >= 0:
-                        # Calculate how much of current output chunk to include
-                        chars_already_yielded = len(current_completion) - len(output)
-                        chars_to_yield = stop_index - chars_already_yielded
-                        output = output[:chars_to_yield] if chars_to_yield >= 0 else ""
-                    if not output:
-                        break
-            if output:
-                chunk = GenerationChunk(text=output)
-                if run_manager:
-                    run_manager.on_llm_new_token(
-                        output,
-                        chunk=chunk,
-                        verbose=self.verbose,
-                    )
-                yield chunk
-            if stop_condition_reached:
-                break
+                    break
+
+                # Keep buffer size of max_stop_length to handle overlapping sequences
+                # This ensures we can detect stop sequences that span chunk boundaries
+                safe_output_length = len(buffered_output) - max_stop_length
+                if safe_output_length > 0:
+                    safe_output = buffered_output[:safe_output_length]
+                    yield self._emit_chunk(safe_output, run_manager)
+                    buffered_output = buffered_output[safe_output_length:]
+
+            if buffered_output:
+                yield self._emit_chunk(buffered_output, run_manager)
+        else:
+            # No stop sequences or handled by prediction, stream normally
+            for output in prediction.output_iterator():
+                if output:
+                    yield self._emit_chunk(output, run_manager)
 
     @override
     def _call(
@@ -162,22 +194,34 @@ class Replicate(ReplicateBase, LLM):
         run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> str:
+        stop_sequences = stop or self.stop
         completion: str
         if self.streaming:
-            completion = "".join(chunk.text for chunk in self._stream(prompt, stop=stop, run_manager=run_manager, **kwargs))
+            completion = "".join(chunk.text for chunk in self._stream(prompt, stop=stop_sequences, run_manager=run_manager, **kwargs))
             return completion
 
-        input_ = self._create_prediction_input(prompt, stream=False, stop=stop, **kwargs)
+        input_ = self._create_prediction_input(prompt, stream=False, stop=stop_sequences, **kwargs)
         prediction = self._create_prediction(input_)
         prediction.wait()
         if prediction.status == "failed":
             raise ModelError(prediction)
         completion = "".join(prediction.output) if isinstance(prediction.output, Iterable) else str(prediction.output)
-        stop_conditions = stop or self.stop
-        stop_positions = [completion.find(s) for s in stop_conditions if s in completion]
-        if stop_positions:
-            completion = completion[: min(stop_positions)]
-        return completion
+        return self._apply_stop_sequences(completion, stop_sequences)
+
+    async def _async_emit_chunk(
+        self,
+        text: str,
+        run_manager: AsyncCallbackManagerForLLMRun | None,
+    ) -> GenerationChunk:
+        """Create and emit a generation chunk with async callback notification."""
+        chunk = GenerationChunk(text=text)
+        if run_manager:
+            await run_manager.on_llm_new_token(
+                text,
+                chunk=chunk,
+                verbose=self.verbose,
+            )
+        return chunk
 
     @override
     async def _astream(
@@ -187,41 +231,42 @@ class Replicate(ReplicateBase, LLM):
         run_manager: AsyncCallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[GenerationChunk]:
-        input_ = self._create_prediction_input(prompt, stream=True, stop=stop, **kwargs)
+        stop_sequences = stop or self.stop
+        input_ = self._create_prediction_input(prompt, stream=True, stop=stop_sequences, **kwargs)
         prediction = await self._async_create_prediction(input_)
 
-        stop_conditions = stop or self.stop
-        stop_condition_reached = False
-        current_completion: str = ""
-        async for output in prediction.async_output_iterator():
-            current_completion += output
-            # test for stop conditions, if specified
-            for s in stop_conditions:
-                if s in current_completion:
+        # If stop sequences are present and not handled by prediction, stream incrementally
+        if stop_sequences and not self._stop_input(stop_sequences):
+            max_stop_length = max((len(sequence) for sequence in stop_sequences), default=0)
+            buffered_output = ""
+
+            async for output in prediction.async_output_iterator():
+                if not output:
+                    continue
+
+                buffered_output += output
+                truncated_output = self._apply_stop_sequences(buffered_output, stop_sequences)
+
+                if len(truncated_output) < len(buffered_output):
+                    buffered_output = truncated_output
                     await prediction.async_cancel()
-                    stop_condition_reached = True
-                    # Potentially some tokens that should still be yielded before ending
-                    # stream.
-                    # Find stop sequence position in accumulated text
-                    stop_index = current_completion.find(s)
-                    if stop_index >= 0:
-                        # Calculate how much of current output chunk to include
-                        chars_already_yielded = len(current_completion) - len(output)
-                        chars_to_yield = stop_index - chars_already_yielded
-                        output = output[:chars_to_yield] if chars_to_yield >= 0 else ""
-                    if not output:
-                        break
-            if output:
-                chunk = GenerationChunk(text=output)
-                if run_manager:
-                    await run_manager.on_llm_new_token(
-                        output,
-                        chunk=chunk,
-                        verbose=self.verbose,
-                    )
-                yield chunk
-            if stop_condition_reached:
-                break
+                    break
+
+                # Keep buffer size of max_stop_length to handle overlapping sequences
+                # This ensures we can detect stop sequences that span chunk boundaries
+                safe_output_length = len(buffered_output) - max_stop_length
+                if safe_output_length > 0:
+                    safe_output = buffered_output[:safe_output_length]
+                    yield await self._async_emit_chunk(safe_output, run_manager)
+                    buffered_output = buffered_output[safe_output_length:]
+
+            if buffered_output:
+                yield await self._async_emit_chunk(buffered_output, run_manager)
+        else:
+            # No stop sequences or handled by prediction, stream normally
+            async for output in prediction.async_output_iterator():
+                if output:
+                    yield await self._async_emit_chunk(output, run_manager)
 
     @override
     async def _acall(
@@ -231,19 +276,16 @@ class Replicate(ReplicateBase, LLM):
         run_manager: AsyncCallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> str:
+        stop_sequences = stop or self.stop
         completion: str
         if self.streaming:
-            completion = "".join([chunk.text async for chunk in self._astream(prompt, stop=stop, run_manager=run_manager, **kwargs)])
+            completion = "".join([chunk.text async for chunk in self._astream(prompt, stop=stop_sequences, run_manager=run_manager, **kwargs)])
             return completion
 
-        input_ = self._create_prediction_input(prompt, stream=False, stop=stop, **kwargs)
+        input_ = self._create_prediction_input(prompt, stream=False, stop=stop_sequences, **kwargs)
         prediction = await self._async_create_prediction(input_)
         await prediction.async_wait()
         if prediction.status == "failed":
             raise ModelError(prediction)
         completion = "".join(prediction.output) if isinstance(prediction.output, Iterable) else str(prediction.output)
-        stop_conditions = stop or self.stop
-        stop_positions = [completion.find(s) for s in stop_conditions if s in completion]
-        if stop_positions:
-            completion = completion[: min(stop_positions)]
-        return completion
+        return self._apply_stop_sequences(completion, stop_sequences)
