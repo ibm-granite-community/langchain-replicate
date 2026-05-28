@@ -599,7 +599,11 @@ class ChatReplicate(ReplicateBase, BaseChatModel):
     def _create_prediction_input(self, messages: list[BaseMessage], stream: bool, stop: list[str] | None, **kwargs: Any) -> dict[str, Any]:
         message_dicts = self._create_message_dicts(messages)
 
-        input_: dict[str, Any] = self.model_kwargs | kwargs | {"messages": message_dicts} | self._stop_input(stop) | self._stream_input(stream)
+        input_ = self.model_kwargs.copy()
+        input_.update(kwargs)
+        input_["messages"] = message_dicts
+        input_.update(self._stop_input(stop))
+        input_.update(self._stream_input(stream))
 
         return _adjust_prediction_input(input_)
 

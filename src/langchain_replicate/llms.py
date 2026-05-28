@@ -102,7 +102,11 @@ class Replicate(ReplicateBase, LLM):
         if self.prompt_key is None:
             self.prompt_key = next(iter(self._input_properties))
 
-        input_: dict[str, Any] = self.model_kwargs | kwargs | {self.prompt_key: prompt} | self._stop_input(stop) | self._stream_input(stream)
+        input_ = self.model_kwargs.copy()
+        input_.update(kwargs)
+        input_[self.prompt_key] = prompt
+        input_.update(self._stop_input(stop))
+        input_.update(self._stream_input(stream))
 
         return _adjust_prediction_input(input_)
 
