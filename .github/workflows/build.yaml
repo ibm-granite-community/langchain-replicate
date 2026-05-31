@@ -115,6 +115,7 @@ jobs:
         uses: ./.github/actions/python_setup
         with:
           python-version: ${{ matrix.python }}
+          save-cache: false
 
       - name: "${{ matrix.lint.name }}"
         run: |
