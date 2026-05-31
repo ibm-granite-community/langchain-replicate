@@ -258,7 +258,7 @@ cd langchain-replicate
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install dependencies
-uv pip install -e . --group=test
+uv sync
 
 # Install pre-commit hooks
 pre-commit install
@@ -268,23 +268,23 @@ pre-commit install
 
 ```bash
 # Run all tests
-uvx pytest
+uv run pytest tests
 
 # Run specific test file
-uvx pytest tests/test_chat_models.py
+uv run pytest tests/test_chat_models.py
 ```
 
 ### Code Quality
 
 ```bash
 # Format code
-uvx ruff format
+uv run ruff format
 
 # Lint code
-uvx ruff check --fix
+uv run ruff check --fix
 
 # Type checking
-uvx pyrefly check
+uv run pyrefly check
 ```
 
 ## Troubleshooting
