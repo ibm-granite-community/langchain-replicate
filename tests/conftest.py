@@ -10,7 +10,14 @@ from pydantic.types import SecretStr
 
 @pytest.fixture
 def replicate_api_token(monkeypatch: pytest.MonkeyPatch) -> SecretStr:
-    """Return the api token from the env. We also remove it from the env."""
+    """
+    Used by tests which want to explicitly test the use of the replicate_api_token
+    argument when creating the model.
+
+    When this fixture is used, we return the api token from the env and
+    also remove it from the environment to confirm the code is using the
+    replicate_api_token argument.
+    """
     api_token = os.getenv("REPLICATE_API_TOKEN", "")
     assert_that(api_token).is_not_none().is_not_empty()
     monkeypatch.delenv("REPLICATE_API_TOKEN")
@@ -19,6 +26,13 @@ def replicate_api_token(monkeypatch: pytest.MonkeyPatch) -> SecretStr:
 
 @pytest.fixture
 def documents() -> list[dict[str, Any]]:
+    """
+    Provides sample documents for embedding and retrieval tests.
+
+    Returns a list of 4 documents, each containing:
+    - text: Long-form speech excerpt
+    - doc_id: Unique identifier (string or int)
+    """
     doc_list: list[dict[str, Any]] = [
         {
             "text": """Tonight. I call on the Senate to: Pass the Freedom to Vote Act. Pass the John Lewis Voting Rights Act. And while you're at it, pass the Disclose Act so Americans can know who is funding our elections.
@@ -108,7 +122,7 @@ They were responding to a 9-1-1 call when a man shot and killed them with a stol
 Officer Mora was 27 years old.
 Officer Rivera was 22.
 Both Dominican Americans who'd grown up on the same streets they later chose to patrol as police officers.""",  # noqa: E501
-            "doc_id": 13,
+            "doc_id": 13,  # This is deliberately an int to test handling of non-string doc_ids.
         },
     ]
     return doc_list
@@ -116,6 +130,13 @@ Both Dominican Americans who'd grown up on the same streets they later chose to 
 
 @pytest.fixture
 def tools() -> list[dict[str, Any]]:
+    """
+    Provides sample tool definitions for function calling tests.
+
+    Returns a list of 2 tool definitions in OpenAI function calling format:
+    - get_current_weather: Retrieves weather for a given location
+    - get_stock_price: Retrieves stock price data for a ticker and date
+    """
     tool_list: list[dict[str, Any]] = [
         {
             "type": "function",
@@ -153,5 +174,11 @@ def tools() -> list[dict[str, Any]]:
 
 @pytest.fixture
 def embed_texts() -> list[str]:
+    """
+    Provides sample text strings for embedding tests.
+
+    Returns a list of 3 short factual statements covering different topics
+    (mathematics, mammals, reptiles) for testing text embedding functionality.
+    """
     texts = ["What is Pi?", "Cats are mammals", "Snakes are reptiles"]
     return texts
