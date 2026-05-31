@@ -33,3 +33,4 @@ runs:
         python-version: ${{ steps.setup-python.outputs.python-version }}
         version: ${{ inputs.uv-version }}
         enable-cache: ${{ inputs.enable-cache }}
+        save-cache: ${{ github.event_name != 'pull_request' }}
