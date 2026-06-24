@@ -76,7 +76,7 @@ class ReplicateBase(BaseModel, abc.ABC):
     """Base model for Replicate integrations"""
 
     model: str
-    model_kwargs: dict[str, Any] = Field(default_factory=dict)
+    model_kwargs: Annotated[dict[str, Any], Field(default_factory=dict)]
     replicate_api_token: Annotated[SecretStr | str | None, BeforeValidator(_validate_api_token), PlainSerializer(_get_secret, when_used="json-unless-none")] = None
     version_obj: Annotated[Any | None, Field(exclude=True), BeforeValidator(_validate_version)] = None
     """Optionally pass in the model version object during initialization to avoid
