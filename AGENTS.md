@@ -10,6 +10,10 @@ This file provides guidance to agents when working with code in this repository.
 - Run one test with `uv run pytest tests/test_chat_models.py::TestChat::test_invoke`.
 - Slow embedding coverage is opt-in via `uv run pytest -m slow tests/test_embeddings.py`.
 
+## Version Control
+
+- Always create signed tags using `git tag -s` when tagging releases; unsigned tags are not permitted.
+
 ## Project-specific patterns
 
 - Always pass prediction payloads through [`_adjust_prediction_input()`](src/langchain_replicate/_base.py:52); it rewrites unsupported `tool_choice="any"` to `"required"` and JSON-serializes dict or named tool choices before hitting Replicate.
