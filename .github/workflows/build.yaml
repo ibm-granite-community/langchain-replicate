@@ -9,6 +9,7 @@ on:
     paths:
       - '**/*.py'
       - 'pyproject.toml'
+      - 'uv.lock'
       - '.github/workflows/build.ya?ml' # This workflow
       - '.github/actions/python_setup/*'
   pull_request:
@@ -17,6 +18,7 @@ on:
     paths:
       - '**/*.py'
       - 'pyproject.toml'
+      - 'uv.lock'
       - '.github/workflows/build.ya?ml' # This workflow
       - '.github/actions/python_setup/*'
 
