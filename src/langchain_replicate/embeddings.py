@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Annotated, Any
 
 from langchain_core.embeddings import Embeddings
 from pydantic import ConfigDict, Field
@@ -34,11 +34,14 @@ class ReplicateEmbeddings(ReplicateBase, Embeddings):
     """
 
     texts_key: str | None = None
-    texts_value_mapping: Callable[[Sequence[str]], Any] | None = Field(
-        default=None,
-        exclude=True,
-        repr=False,
-    )
+    texts_value_mapping: Annotated[
+        Callable[[Sequence[str]], Any] | None,
+        Field(
+            default=None,
+            exclude=True,
+            repr=False,
+        ),
+    ]
     """Can be used to map the input list of strings for the embeddings to some
         type other than List[str]. For example, if the model requires the strings as a JSON
         formatted string, this field can be set to `json.dumps`. If the model requires newline

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import AsyncIterator, Iterable, Iterator
-from typing import Any
+from typing import Annotated, Any
 
 from langchain_core.callbacks import AsyncCallbackManagerForLLMRun, CallbackManagerForLLMRun
 from langchain_core.language_models.llms import LLM
@@ -43,13 +43,13 @@ class Replicate(ReplicateBase, LLM):
             )
     """
 
-    model_kwargs: dict[str, Any] = Field(default_factory=dict, validation_alias="input")
+    model_kwargs: Annotated[dict[str, Any], Field(default_factory=dict, validation_alias="input")]
     prompt_key: str | None = None
 
     streaming: bool = False
     """Whether to stream the results."""
 
-    stop: list[str] = Field(default_factory=list)
+    stop: Annotated[list[str], Field(default_factory=list)]
     """Stop sequences to early-terminate generation."""
 
     model_config = ConfigDict(
