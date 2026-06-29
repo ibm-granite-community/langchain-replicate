@@ -9,10 +9,25 @@ This file provides guidance to agents when working with code in this repository.
 - Run one file with `uv run pytest tests/test_chat_models.py`.
 - Run one test with `uv run pytest tests/test_chat_models.py::TestChat::test_invoke`.
 - Slow embedding coverage is opt-in via `uv run pytest -m slow tests/test_embeddings.py`.
+- Tests use `assertpy` for assertions (not `assert` statements).
+
+## Lint / Type Check
+
+- Lint: `uv run ruff check` (auto-fix: `uv run ruff check --fix`)
+- Format: `uv run ruff format`
+- Type check: `uv run pyrefly check`
+- Inline pyrefly suppressions use `# pyrefly: ignore [missing-attribute]` syntax, not `# type: ignore`.
 
 ## Version Control
 
 - Always create signed tags using `git tag -s` when tagging releases; unsigned tags are not permitted.
+
+## Code Style
+
+- All source files begin with `# SPDX-License-Identifier: MIT`.
+- All source files use `from __future__ import annotations` as the first import.
+- Max line length is 180 (non-standard); do not wrap lines that fit within 180 chars.
+- Active ruff rule sets: B, E, W, F, Q, I (isort), UP (pyupgrade), SIM, TID, N (pep8-naming).
 
 ## Project-specific patterns
 
