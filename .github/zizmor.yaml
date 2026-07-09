@@ -1,0 +1,4 @@
+rules:
+  dangerous-triggers:
+    ignore:
+    - "dependabot_merge.yaml"
