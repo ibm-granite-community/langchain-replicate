@@ -200,8 +200,15 @@ def _convert_dict_to_message(_dict: Mapping[str, Any], call_id: str) -> BaseMess
                     )
         if audio := _dict.get("audio"):
             additional_kwargs["audio"] = audio
-        if reasoning_content := _dict.get("reasoning_content"):
-            additional_kwargs["reasoning_content"] = reasoning_content
+
+        # if reasoning present, place in additional_kwargs supporting old reasoning_content key
+        reasoning = _dict.get("reasoning")
+        if reasoning is None:
+            reasoning = _dict.get("reasoning_content")
+        if reasoning:
+            additional_kwargs["reasoning"] = reasoning
+            additional_kwargs["reasoning_content"] = reasoning
+
         return AIMessage(
             content=content,
             additional_kwargs=additional_kwargs,
@@ -239,7 +246,7 @@ def _format_message_content(content: Any) -> Any:
         formatted_content = []
         for block in content:
             # Remove unexpected block types
-            if isinstance(block, dict) and "type" in block and block["type"] in {"tool_use", "thinking", "reasoning_content"}:
+            if isinstance(block, dict) and "type" in block and block["type"] in {"tool_use", "thinking", "reasoning", "reasoning_content"}:
                 continue
 
             # Image blocks
@@ -321,6 +328,14 @@ def _convert_message_to_dict(message: BaseMessage) -> dict[str, Any]:
         if "function_call" in message_dict or "tool_calls" in message_dict:
             message_dict["content"] = message_dict["content"] or None
 
+        # if reasoning present, place in dict supporting old reasoning_content key
+        reasoning = message.additional_kwargs.get("reasoning")
+        if reasoning is None:
+            reasoning = message.additional_kwargs.get("reasoning_content")
+        if reasoning:
+            message_dict["reasoning"] = reasoning
+            message_dict["reasoning_content"] = reasoning
+
         audio: dict[str, Any] | None = None
         for block in message.content:
             if isinstance(block, dict) and block.get("type") == "audio" and (id_ := block.get("id")):
@@ -397,8 +412,13 @@ def _convert_delta_to_message_chunk(
                 for rtc in raw_tool_calls
             ]
 
-    if reasoning_content := _dict.get("reasoning_content"):
-        additional_kwargs["reasoning_content"] = reasoning_content
+    # if reasoning present, place in additional_kwargs supporting old reasoning_content key
+    reasoning = _dict.get("reasoning")
+    if reasoning is None:
+        reasoning = _dict.get("reasoning_content")
+    if reasoning:
+        additional_kwargs["reasoning"] = reasoning
+        additional_kwargs["reasoning_content"] = reasoning
 
     if role == "user" or default_class == HumanMessageChunk:
         return HumanMessageChunk(content=content, id=id_)
