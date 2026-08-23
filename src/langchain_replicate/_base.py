@@ -141,6 +141,7 @@ class ReplicateBase(BaseModel, abc.ABC):
         """Sort the openapi schema Input properties in x-order"""
         input_properties = sorted(
             self._version.openapi_schema["components"]["schemas"]["Input"]["properties"].items(),
+            # pyrefly: ignore [implicit-any-lambda]
             key=lambda item: item[1].get("x-order", 0),
         )
         return dict(input_properties)

@@ -67,12 +67,14 @@ class TestBase:
         llm = Replicate(model=TEST_MODEL_LANG, replicate_api_token=replicate_api_token)
         input_properties = llm._input_properties
         assert_that(input_properties).is_instance_of(dict).is_not_empty()
+        # pyrefly: ignore [implicit-any-lambda]
         assert_that(input_properties.items()).is_sorted(key=lambda item: item[1].get("x-order", 0))
 
     def test_input_properties_deployment(self, replicate_api_token: SecretStr) -> None:
         llm = Replicate(model=TEST_DEPLOYMENT_LANG, replicate_api_token=replicate_api_token)
         input_properties = llm._input_properties
         assert_that(input_properties).is_instance_of(dict).is_not_empty()
+        # pyrefly: ignore [implicit-any-lambda]
         assert_that(input_properties.items()).is_sorted(key=lambda item: item[1].get("x-order", 0))
 
     def test_api_token_secret_str(self) -> None:
