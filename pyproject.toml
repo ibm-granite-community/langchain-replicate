@@ -45,8 +45,8 @@ dev = [
     "pytest-asyncio>=0.23.0",
     "assertpy>=1.1",
     "types-assertpy>=1.1",
-    "pyrefly>=1.0.0",
-    "ruff>=0.15.0",
+    "pyrefly>=1.2.0",
+    "ruff>=0.16.0",
 ]
 
 [tool.uv]
